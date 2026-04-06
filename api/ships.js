@@ -13,13 +13,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const shipsSnapshot = await getSnapshotForRequest(process.env.AISSTREAM_API_KEY);
+    const shipsSnapshot = await getSnapshotForRequest(process.env.VESSELFINDER_API_KEY);
 
     res.setHeader("Cache-Control", "no-store, max-age=0");
     res.status(200).json(shipsSnapshot);
   } catch (error) {
     const fallback = snapshot(createShipState(), {
-      ...createConnectionState(Boolean(process.env.AISSTREAM_API_KEY)),
+      ...createConnectionState(Boolean(process.env.VESSELFINDER_API_KEY)),
       status: "error",
       lastError: error instanceof Error ? error.message : "Unexpected server error."
     });

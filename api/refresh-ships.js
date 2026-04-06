@@ -28,11 +28,9 @@ export default async function handler(req, res) {
   }
 
   const result = await refreshAndCacheSnapshot({
-    apiKey: process.env.AISSTREAM_API_KEY,
+    apiKey: process.env.VESSELFINDER_API_KEY,
     attempts: 2,
-    timeoutMs: 8000,
-    idleAfterFirstMessageMs: 2200,
-    maxRelevantMessages: 40
+    timeoutMs: 8000
   });
 
   const payload = {
