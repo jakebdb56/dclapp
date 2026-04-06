@@ -19,6 +19,18 @@ const DISNEY_SHIPS = [
   { mmsi: "311000934", name: "Disney Adventure", className: "Global Class", homeRegion: "Singapore" }
 ];
 
+const DISNEY_NAME_TO_MMSI = new Map(
+  DISNEY_SHIPS.map((ship) => [ship.name.toUpperCase(), ship.mmsi])
+);
+
+const DISNEY_BOUNDING_BOXES = [
+  [[15, -100], [33, -58]],   // Gulf / Caribbean / Bahamas / Florida
+  [[30, -78], [39, -69]],    // US East Coast approaches
+  [[47, -136], [62, -121]],  // Alaska / Pacific Northwest
+  [[30, -12], [46, 37]],     // Mediterranean / Western Europe
+  [[-5, 99], [16, 119]]      // Singapore / Southeast Asia
+];
+
 const MESSAGE_TYPES = new Set([
   "PositionReport",
   "ExtendedClassBPositionReport",
@@ -75,6 +87,11 @@ function cleanText(value) {
   return trimmed || null;
 }
 
+function normalizeShipName(value) {
+  const cleaned = cleanText(value);
+  return cleaned ? cleaned.toUpperCase() : null;
+}
+
 function formatEta(eta) {
   if (!eta || typeof eta !== "object") {
     return null;
@@ -116,10 +133,31 @@ function updateShip(mmsi, updates) {
   });
 }
 
-function handleAisMessage(rawMessage) {
+async function normalizeIncomingMessage(rawMessage) {
+  if (typeof rawMessage === "string") {
+    return rawMessage;
+  }
+
+  if (rawMessage instanceof Blob) {
+    return rawMessage.text();
+  }
+
+  if (rawMessage instanceof ArrayBuffer) {
+    return Buffer.from(rawMessage).toString("utf8");
+  }
+
+  if (ArrayBuffer.isView(rawMessage)) {
+    return Buffer.from(rawMessage.buffer, rawMessage.byteOffset, rawMessage.byteLength).toString("utf8");
+  }
+
+  return String(rawMessage);
+}
+
+async function handleAisMessage(rawMessage) {
+  const messageText = await normalizeIncomingMessage(rawMessage);
   let parsed;
   try {
-    parsed = JSON.parse(rawMessage);
+    parsed = JSON.parse(messageText);
   } catch {
     return;
   }
@@ -137,7 +175,11 @@ function handleAisMessage(rawMessage) {
 
   const body = getMessageBody(parsed);
   const meta = readMeta(parsed);
-  const mmsi = String(body?.UserID || meta?.MMSI || "");
+  const reportedMmsi = String(body?.UserID || meta?.MMSI || "");
+  const candidateName = normalizeShipName(
+    meta?.ShipName || body?.Name || body?.ReportA?.Name || body?.ReportB?.Name
+  );
+  const mmsi = shipState.has(reportedMmsi) ? reportedMmsi : DISNEY_NAME_TO_MMSI.get(candidateName || "") || "";
 
   if (!shipState.has(mmsi)) {
     return;
@@ -234,16 +276,22 @@ function connectToAisStream() {
   aisSocket.addEventListener("open", () => {
     const subscription = {
       APIKey: apiKey,
-      BoundingBoxes: [[[-90, -180], [90, 180]]],
-      FiltersShipMMSI: DISNEY_SHIPS.map((ship) => ship.mmsi),
+      BoundingBoxes: DISNEY_BOUNDING_BOXES,
       FilterMessageTypes: Array.from(MESSAGE_TYPES)
     };
 
     aisSocket.send(JSON.stringify(subscription));
+    connectionState.status = "subscribed";
+    connectionState.lastError = null;
+    broadcastSnapshot();
   });
 
   aisSocket.addEventListener("message", (event) => {
-    handleAisMessage(event.data);
+    handleAisMessage(event.data).catch((error) => {
+      connectionState.status = "error";
+      connectionState.lastError = error instanceof Error ? error.message : "Unable to process AISStream message.";
+      broadcastSnapshot();
+    });
   });
 
   aisSocket.addEventListener("close", () => {
