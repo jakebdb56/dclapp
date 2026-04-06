@@ -4,6 +4,8 @@ const feedStatus = document.querySelector("#feed-status");
 const feedUpdated = document.querySelector("#feed-updated");
 const toggleButtons = Array.from(document.querySelectorAll(".toggle-button"));
 const panels = Array.from(document.querySelectorAll("[data-view]"));
+const POLL_INTERVAL_MS = 60000;
+const SNAPSHOT_STORAGE_KEY = "dcl-tracker-snapshot";
 
 const map = L.map("map", {
   zoomControl: true,
@@ -17,6 +19,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 
 const markers = new Map();
 let hasFitMap = false;
+let currentSnapshot = null;
 
 toggleButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -200,26 +203,95 @@ function render(data) {
   syncMap(ships);
 }
 
-async function loadInitialData() {
-  const response = await fetch("/api/ships");
-  const data = await response.json();
-  render(data);
-}
+function mergeShips(previousShip, nextShip) {
+  if (!previousShip) {
+    return nextShip;
+  }
 
-function connectStream() {
-  const source = new EventSource("/api/stream");
-
-  source.addEventListener("snapshot", (event) => {
-    render(JSON.parse(event.data));
-  });
-
-  source.onerror = () => {
-    feedStatus.textContent = "stream reconnecting";
+  return {
+    ...previousShip,
+    ...nextShip,
+    destination: nextShip.destination || previousShip.destination,
+    eta: nextShip.eta || previousShip.eta,
+    latitude: nextShip.latitude ?? previousShip.latitude,
+    longitude: nextShip.longitude ?? previousShip.longitude,
+    course: nextShip.course ?? previousShip.course,
+    heading: nextShip.heading ?? previousShip.heading,
+    speedKnots: nextShip.speedKnots ?? previousShip.speedKnots,
+    navigationStatus: nextShip.navigationStatus ?? previousShip.navigationStatus,
+    lastSeen: nextShip.lastSeen || previousShip.lastSeen,
+    sourceMessageType: nextShip.sourceMessageType || previousShip.sourceMessageType
   };
 }
 
-loadInitialData().catch((error) => {
+function mergeSnapshots(previousSnapshot, nextSnapshot) {
+  if (!previousSnapshot) {
+    return nextSnapshot;
+  }
+
+  const previousShips = new Map(previousSnapshot.ships.map((ship) => [ship.mmsi, ship]));
+  const ships = nextSnapshot.ships.map((ship) => mergeShips(previousShips.get(ship.mmsi), ship));
+  const hasFreshEvent = Boolean(nextSnapshot.connection.lastEventAt);
+
+  return {
+    connection: {
+      ...nextSnapshot.connection,
+      status: hasFreshEvent ? nextSnapshot.connection.status : "cached",
+      lastEventAt: nextSnapshot.connection.lastEventAt || previousSnapshot.connection.lastEventAt,
+      lastError: hasFreshEvent ? nextSnapshot.connection.lastError : previousSnapshot.connection.lastError
+    },
+    ships
+  };
+}
+
+function persistSnapshot(data) {
+  currentSnapshot = data;
+  localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(data));
+}
+
+function hydrateSnapshot() {
+  const stored = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
+  if (!stored) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+async function loadSnapshot() {
+  const response = await fetch("/api/ships");
+  if (!response.ok) {
+    throw new Error(`API returned ${response.status}`);
+  }
+  const data = await response.json();
+  const merged = mergeSnapshots(currentSnapshot, data);
+  persistSnapshot(merged);
+  render(merged);
+}
+
+async function refreshSnapshot() {
+  try {
+    await loadSnapshot();
+  } catch (error) {
+    feedStatus.textContent = "refresh failed";
+    shipList.innerHTML = `<div class="empty-state">Unable to load fleet data. ${error.message}</div>`;
+  }
+}
+
+refreshSnapshot().catch((error) => {
   shipList.innerHTML = `<div class="empty-state">Unable to load fleet data. ${error.message}</div>`;
 });
 
-connectStream();
+const cachedSnapshot = hydrateSnapshot();
+if (cachedSnapshot) {
+  currentSnapshot = cachedSnapshot;
+  render(cachedSnapshot);
+}
+
+setInterval(() => {
+  refreshSnapshot();
+}, POLL_INTERVAL_MS);
