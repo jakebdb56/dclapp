@@ -44,6 +44,24 @@ npx vercel dev
 
 The frontend is static and the data comes from the serverless route at `/api/ships`.
 
+## Scheduled refresh
+
+This repo includes a GitHub Actions workflow at `.github/workflows/warm-cache.yml` that warms the Redis cache every 15 minutes.
+
+To enable it:
+
+1. In GitHub, open `Settings` -> `Secrets and variables` -> `Actions`.
+2. Add `DCL_REFRESH_URL` with your refresh endpoint URL:
+
+```text
+https://www.disneycruise.tech/api/refresh-ships
+```
+
+3. If you set `CRON_SECRET` in Vercel, add the same value in GitHub as `DCL_CRON_SECRET`.
+4. Enable GitHub Actions for the repo if they are disabled.
+
+You can also run the workflow manually with `Run workflow` from the Actions tab.
+
 ## Notes
 
 - `aisstream.io` does not support direct browser connections, so this app connects from a serverless API route and returns snapshots to the frontend.
