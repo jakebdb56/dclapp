@@ -22,22 +22,25 @@ const markers = new Map();
 let hasFitMap = false;
 let currentSnapshot = null;
 let refreshTimer = null;
+let selectedShipMmsi = null;
+
+function setActiveView(target) {
+  toggleButtons.forEach((item) => {
+    item.classList.toggle("is-active", item.dataset.viewTarget === target);
+  });
+
+  panels.forEach((panel) => {
+    panel.classList.toggle("is-active", panel.dataset.view === target);
+  });
+
+  if (target === "map") {
+    setTimeout(() => map.invalidateSize(), 150);
+  }
+}
 
 toggleButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    const target = button.dataset.viewTarget;
-
-    toggleButtons.forEach((item) => {
-      item.classList.toggle("is-active", item === button);
-    });
-
-    panels.forEach((panel) => {
-      panel.classList.toggle("is-active", panel.dataset.view === target);
-    });
-
-    if (target === "map") {
-      setTimeout(() => map.invalidateSize(), 150);
-    }
+    setActiveView(button.dataset.viewTarget);
   });
 });
 
@@ -104,8 +107,20 @@ function renderFleet(ships) {
   shipList.innerHTML = ships
     .map((ship) => {
       const status = getShipStatus(ship);
+      const hasPosition = ship.latitude !== null && ship.longitude !== null;
+      const cardClasses = ["ship-card", hasPosition ? "has-position" : "no-position"];
+      if (selectedShipMmsi === ship.mmsi) {
+        cardClasses.push("is-selected");
+      }
+
       return `
-        <article class="ship-card">
+        <article
+          class="${cardClasses.join(" ")}"
+          data-ship-mmsi="${ship.mmsi}"
+          tabindex="0"
+          role="button"
+          aria-label="${hasPosition ? `Show ${ship.name} on the map` : `${ship.name} does not have a reported position yet`}"
+        >
           <div class="ship-card-top">
             <div>
               <h3>${ship.name}</h3>
@@ -136,11 +151,55 @@ function renderFleet(ships) {
           <p class="ship-meta">
             Last seen: ${formatTime(ship.lastSeen)}${ship.sourceMessageType ? ` • ${ship.sourceMessageType}` : ""}
           </p>
+          <p class="ship-card-action">${hasPosition ? "Tap to zoom to ship" : "Waiting for a reported position"}</p>
         </article>
       `;
     })
     .join("");
 }
+
+function focusShipOnMap(mmsi) {
+  const marker = markers.get(mmsi);
+  const ship = currentSnapshot?.ships?.find((item) => item.mmsi === mmsi);
+
+  selectedShipMmsi = mmsi;
+  if (currentSnapshot) {
+    renderFleet(currentSnapshot.ships);
+  }
+
+  if (!marker || !ship || ship.latitude === null || ship.longitude === null) {
+    return;
+  }
+
+  setActiveView("map");
+  map.flyTo([ship.latitude, ship.longitude], Math.max(map.getZoom(), 8), {
+    duration: 0.8
+  });
+  marker.openPopup();
+}
+
+shipList.addEventListener("click", (event) => {
+  const card = event.target.closest(".ship-card");
+  if (!card) {
+    return;
+  }
+
+  focusShipOnMap(card.dataset.shipMmsi);
+});
+
+shipList.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") {
+    return;
+  }
+
+  const card = event.target.closest(".ship-card");
+  if (!card) {
+    return;
+  }
+
+  event.preventDefault();
+  focusShipOnMap(card.dataset.shipMmsi);
+});
 
 function popupMarkup(ship) {
   return `
@@ -186,6 +245,10 @@ function syncMap(ships) {
 
     marker.bindPopup(popupMarkup(ship));
   });
+
+  if (selectedShipMmsi && markers.has(selectedShipMmsi)) {
+    markers.get(selectedShipMmsi).openPopup();
+  }
 
   if (bounds.length) {
     if (!hasFitMap) {

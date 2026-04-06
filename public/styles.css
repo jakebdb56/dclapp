@@ -161,6 +161,28 @@ body {
   border-radius: 22px;
   background: var(--panel-strong);
   border: 1px solid rgba(29, 43, 56, 0.09);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.ship-card:hover,
+.ship-card:focus-visible {
+  border-color: rgba(15, 108, 116, 0.34);
+  box-shadow: 0 16px 34px rgba(18, 38, 54, 0.1);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.ship-card.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 108, 116, 0.16);
+}
+
+.ship-card.no-position {
+  cursor: default;
 }
 
 .ship-card-top {
@@ -208,6 +230,17 @@ body {
 .ship-meta {
   margin-top: 0.9rem;
   font-size: 0.92rem;
+}
+
+.ship-card-action {
+  margin-top: 0.65rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.ship-card.no-position .ship-card-action {
+  color: var(--muted);
 }
 
 .status-badge {
