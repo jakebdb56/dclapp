@@ -2,6 +2,8 @@ const shipList = document.querySelector("#ship-list");
 const fleetSummary = document.querySelector("#fleet-summary");
 const feedStatus = document.querySelector("#feed-status");
 const feedUpdated = document.querySelector("#feed-updated");
+const fleetDrawer = document.querySelector("#fleet-drawer");
+const fleetToggle = document.querySelector("#fleet-toggle");
 const toggleButtons = Array.from(document.querySelectorAll(".toggle-button"));
 const panels = Array.from(document.querySelectorAll("[data-view]"));
 const POLL_INTERVAL_MS = 60000;
@@ -42,6 +44,13 @@ toggleButtons.forEach((button) => {
   button.addEventListener("click", () => {
     setActiveView(button.dataset.viewTarget);
   });
+});
+
+fleetToggle.addEventListener("click", () => {
+  const collapsed = fleetDrawer.classList.toggle("is-collapsed");
+  fleetToggle.textContent = collapsed ? "Show fleet" : "Hide fleet";
+  fleetToggle.setAttribute("aria-expanded", String(!collapsed));
+  setTimeout(() => map.invalidateSize(), 180);
 });
 
 function formatTime(value) {
@@ -172,6 +181,11 @@ function focusShipOnMap(mmsi) {
   }
 
   setActiveView("map");
+  if (window.matchMedia("(max-width: 700px)").matches) {
+    fleetDrawer.classList.add("is-collapsed");
+    fleetToggle.textContent = "Show fleet";
+    fleetToggle.setAttribute("aria-expanded", "false");
+  }
   map.flyTo([ship.latitude, ship.longitude], Math.max(map.getZoom(), 8), {
     duration: 0.8
   });
