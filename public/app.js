@@ -5,6 +5,7 @@ const feedUpdated = document.querySelector("#feed-updated");
 const toggleButtons = Array.from(document.querySelectorAll(".toggle-button"));
 const panels = Array.from(document.querySelectorAll("[data-view]"));
 const POLL_INTERVAL_MS = 60000;
+const COLD_START_RETRY_MS = 15000;
 const SNAPSHOT_STORAGE_KEY = "dcl-tracker-snapshot";
 
 const map = L.map("map", {
@@ -20,6 +21,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 const markers = new Map();
 let hasFitMap = false;
 let currentSnapshot = null;
+let refreshTimer = null;
 
 toggleButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -203,6 +205,20 @@ function render(data) {
   syncMap(ships);
 }
 
+function hasUsefulShipData(snapshot) {
+  if (!snapshot?.ships) {
+    return false;
+  }
+
+  return snapshot.ships.some(
+    (ship) =>
+      ship.latitude !== null ||
+      ship.longitude !== null ||
+      Boolean(ship.destination) ||
+      Boolean(ship.lastSeen)
+  );
+}
+
 function mergeShips(previousShip, nextShip) {
   if (!previousShip) {
     return nextShip;
@@ -226,17 +242,32 @@ function mergeShips(previousShip, nextShip) {
 
 function mergeSnapshots(previousSnapshot, nextSnapshot) {
   if (!previousSnapshot) {
-    return nextSnapshot;
+    if (hasUsefulShipData(nextSnapshot)) {
+      return nextSnapshot;
+    }
+
+    return {
+      ...nextSnapshot,
+      connection: {
+        ...nextSnapshot.connection,
+        status: "searching_for_disney_updates"
+      }
+    };
   }
 
   const previousShips = new Map(previousSnapshot.ships.map((ship) => [ship.mmsi, ship]));
   const ships = nextSnapshot.ships.map((ship) => mergeShips(previousShips.get(ship.mmsi), ship));
   const hasFreshEvent = Boolean(nextSnapshot.connection.lastEventAt);
+  const hasCachedUsefulData = hasUsefulShipData(previousSnapshot);
 
   return {
     connection: {
       ...nextSnapshot.connection,
-      status: hasFreshEvent ? nextSnapshot.connection.status : "cached",
+      status: hasFreshEvent
+        ? nextSnapshot.connection.status
+        : hasCachedUsefulData
+          ? "cached"
+          : "searching_for_disney_updates",
       lastEventAt: nextSnapshot.connection.lastEventAt || previousSnapshot.connection.lastEventAt,
       lastError: hasFreshEvent ? nextSnapshot.connection.lastError : previousSnapshot.connection.lastError
     },
@@ -246,7 +277,9 @@ function mergeSnapshots(previousSnapshot, nextSnapshot) {
 
 function persistSnapshot(data) {
   currentSnapshot = data;
-  localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(data));
+  if (hasUsefulShipData(data)) {
+    localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(data));
+  }
 }
 
 function hydrateSnapshot() {
@@ -279,7 +312,20 @@ async function refreshSnapshot() {
   } catch (error) {
     feedStatus.textContent = "refresh failed";
     shipList.innerHTML = `<div class="empty-state">Unable to load fleet data. ${error.message}</div>`;
+  } finally {
+    scheduleNextRefresh();
   }
+}
+
+function scheduleNextRefresh() {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+  }
+
+  const delay = hasUsefulShipData(currentSnapshot) ? POLL_INTERVAL_MS : COLD_START_RETRY_MS;
+  refreshTimer = setTimeout(() => {
+    refreshSnapshot();
+  }, delay);
 }
 
 refreshSnapshot().catch((error) => {
@@ -291,7 +337,3 @@ if (cachedSnapshot) {
   currentSnapshot = cachedSnapshot;
   render(cachedSnapshot);
 }
-
-setInterval(() => {
-  refreshSnapshot();
-}, POLL_INTERVAL_MS);
