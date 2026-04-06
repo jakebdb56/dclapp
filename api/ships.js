@@ -1,4 +1,4 @@
-import { collectDisneySnapshot } from "../lib/disney-cruise-data.js";
+import { getSnapshotForRequest } from "../lib/snapshot-service.js";
 
 export const config = {
   maxDuration: 20
@@ -11,12 +11,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const snapshot = await collectDisneySnapshot({
-    apiKey: process.env.AISSTREAM_API_KEY,
-    timeoutMs: 13000,
-    idleAfterFirstMessageMs: 2200,
-    maxRelevantMessages: 40
-  });
+  const snapshot = await getSnapshotForRequest(process.env.AISSTREAM_API_KEY);
 
   res.setHeader("Cache-Control", "no-store, max-age=0");
   res.status(200).json(snapshot);

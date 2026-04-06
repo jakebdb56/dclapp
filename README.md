@@ -38,12 +38,15 @@ npx vercel dev
 
 1. Import the repo into Vercel.
 2. Add `AISSTREAM_API_KEY` as an environment variable.
-3. Deploy.
+3. Add Redis cache integration through Vercel Marketplace Storage using Upstash Redis.
+4. Optionally set `CRON_SECRET` if you want to protect manual or scheduled refresh calls.
+5. Deploy.
 
 The frontend is static and the data comes from the serverless route at `/api/ships`.
 
 ## Notes
 
 - `aisstream.io` does not support direct browser connections, so this app connects from a serverless API route and returns snapshots to the frontend.
-- On Vercel, the frontend polls `/api/ships` instead of relying on a long-lived server process or SSE connection.
-- The API route opens a short global AISStream subscription window and filters Disney ships locally, which was more reliable in testing than strict upstream MMSI filtering.
+- On Vercel, `/api/ships` serves the last good cached snapshot from Redis and refreshes AISStream only when the cache is empty or stale.
+- The optional `/api/refresh-ships` endpoint can be used for manual warming or scheduled refreshes. If you set `CRON_SECRET`, send it as a bearer token or `?secret=...`.
+- Vercel Hobby cron jobs only run once per day according to Vercel's docs, so frequent warming requires either a higher Vercel plan or an external scheduler calling `/api/refresh-ships`.

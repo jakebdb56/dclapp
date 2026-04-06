@@ -199,7 +199,8 @@ function syncMap(ships) {
 
 function render(data) {
   const { connection, ships } = data;
-  feedStatus.textContent = connection.status.replace(/_/g, " ");
+  const cacheStatus = connection.cacheStatus ? ` (${connection.cacheStatus.replace(/-/g, " ")})` : "";
+  feedStatus.textContent = `${connection.status.replace(/_/g, " ")}${cacheStatus}`;
   feedUpdated.textContent = formatTime(connection.lastEventAt);
   renderFleet(ships);
   syncMap(ships);
