@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Disney Cruise Tracker</title>
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Disney Cruise Line</p>
+          <h1>Live ship locations and next destinations</h1>
+          <p class="hero-copy">
+            Track Disney Cruise Line ships with live AIS position data relayed through
+            AISStream.
+          </p>
+        </div>
+        <div class="status-panel">
+          <div class="status-row">
+            <span>Feed status</span>
+            <strong id="feed-status">Loading</strong>
+          </div>
+          <div class="status-row">
+            <span>Last update</span>
+            <strong id="feed-updated">Waiting</strong>
+          </div>
+        </div>
+      </header>
+
+      <section class="view-toggle" aria-label="View switcher">
+        <button class="toggle-button is-active" data-view-target="list">List</button>
+        <button class="toggle-button" data-view-target="map">Map</button>
+      </section>
+
+      <main class="layout">
+        <section class="panel panel-list is-active" data-view="list">
+          <div class="section-heading">
+            <h2>Fleet</h2>
+            <p id="fleet-summary">Loading ships…</p>
+          </div>
+          <div id="ship-list" class="ship-list"></div>
+        </section>
+
+        <section class="panel panel-map" data-view="map">
+          <div class="section-heading">
+            <h2>Map</h2>
+            <p>Tap a marker to see position details and next destination.</p>
+          </div>
+          <div id="map"></div>
+        </section>
+      </main>
+    </div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
