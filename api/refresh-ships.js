@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const snapshot = await refreshAndCacheSnapshot({
+  const result = await refreshAndCacheSnapshot({
     apiKey: process.env.AISSTREAM_API_KEY,
     attempts: 2,
     timeoutMs: 8000,
@@ -35,6 +35,11 @@ export default async function handler(req, res) {
     maxRelevantMessages: 40
   });
 
+  const payload = {
+    ...result.snapshot,
+    cacheDebug: result.cacheDebug
+  };
+
   res.setHeader("Cache-Control", "no-store, max-age=0");
-  res.status(200).json(snapshot);
+  res.status(200).json(payload);
 }
