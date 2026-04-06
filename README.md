@@ -47,6 +47,6 @@ The frontend is static and the data comes from the serverless route at `/api/shi
 ## Notes
 
 - `aisstream.io` does not support direct browser connections, so this app connects from a serverless API route and returns snapshots to the frontend.
-- On Vercel, `/api/ships` serves the last good cached snapshot from Redis and refreshes AISStream only when the cache is empty or stale.
+- On Vercel, `/api/ships` serves the last good cached snapshot from Redis and never waits on a live AISStream refresh.
 - The optional `/api/refresh-ships` endpoint can be used for manual warming or scheduled refreshes. If you set `CRON_SECRET`, send it as a bearer token or `?secret=...`.
 - Vercel Hobby cron jobs only run once per day according to Vercel's docs, so frequent warming requires either a higher Vercel plan or an external scheduler calling `/api/refresh-ships`.
