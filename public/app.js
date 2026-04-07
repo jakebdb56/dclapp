@@ -16,6 +16,7 @@ const POLL_INTERVAL_MS = 60000;
 const COLD_START_RETRY_MS = 15000;
 const SNAPSHOT_STORAGE_KEY = "dcl-tracker-snapshot";
 const SHIP_MARKER_SIZE = [48, 34];
+const PARK_MARKER_SIZE = [38, 46];
 const REGION_BOUNDS = {
   bahamas: [
     [22, -80.5],
@@ -70,6 +71,116 @@ const REGION_BOUNDS = {
     [4, 107]
   ]
 };
+const DISNEY_PARKS = [
+  {
+    id: "magic-kingdom",
+    name: "Magic Kingdom",
+    resort: "Walt Disney World Resort",
+    location: "Lake Buena Vista, Florida",
+    latitude: 28.4177,
+    longitude: -81.5812,
+    initials: "MK"
+  },
+  {
+    id: "epcot",
+    name: "EPCOT",
+    resort: "Walt Disney World Resort",
+    location: "Lake Buena Vista, Florida",
+    latitude: 28.3747,
+    longitude: -81.5494,
+    initials: "EP"
+  },
+  {
+    id: "hollywood-studios",
+    name: "Disney's Hollywood Studios",
+    resort: "Walt Disney World Resort",
+    location: "Lake Buena Vista, Florida",
+    latitude: 28.3575,
+    longitude: -81.5583,
+    initials: "HS"
+  },
+  {
+    id: "animal-kingdom",
+    name: "Disney's Animal Kingdom",
+    resort: "Walt Disney World Resort",
+    location: "Lake Buena Vista, Florida",
+    latitude: 28.3554,
+    longitude: -81.5906,
+    initials: "AK"
+  },
+  {
+    id: "disneyland",
+    name: "Disneyland Park",
+    resort: "Disneyland Resort",
+    location: "Anaheim, California",
+    latitude: 33.8121,
+    longitude: -117.919,
+    initials: "DL"
+  },
+  {
+    id: "california-adventure",
+    name: "Disney California Adventure Park",
+    resort: "Disneyland Resort",
+    location: "Anaheim, California",
+    latitude: 33.8061,
+    longitude: -117.919,
+    initials: "CA"
+  },
+  {
+    id: "tokyo-disneyland",
+    name: "Tokyo Disneyland",
+    resort: "Tokyo Disney Resort",
+    location: "Urayasu, Japan",
+    latitude: 35.6329,
+    longitude: 139.8804,
+    initials: "TD"
+  },
+  {
+    id: "tokyo-disneysea",
+    name: "Tokyo DisneySea",
+    resort: "Tokyo Disney Resort",
+    location: "Urayasu, Japan",
+    latitude: 35.6267,
+    longitude: 139.8851,
+    initials: "DS"
+  },
+  {
+    id: "disneyland-paris",
+    name: "Disneyland Park",
+    resort: "Disneyland Paris",
+    location: "Chessy, France",
+    latitude: 48.8722,
+    longitude: 2.7758,
+    initials: "DP"
+  },
+  {
+    id: "disney-adventure-world",
+    name: "Disney Adventure World",
+    resort: "Disneyland Paris",
+    location: "Chessy, France",
+    latitude: 48.8674,
+    longitude: 2.7794,
+    initials: "AW"
+  },
+  {
+    id: "hong-kong-disneyland",
+    name: "Hong Kong Disneyland",
+    resort: "Hong Kong Disneyland Resort",
+    location: "Lantau Island, Hong Kong",
+    latitude: 22.3129,
+    longitude: 114.0413,
+    initials: "HK"
+  },
+  {
+    id: "shanghai-disneyland",
+    name: "Shanghai Disneyland",
+    resort: "Shanghai Disney Resort",
+    location: "Pudong, Shanghai",
+    latitude: 31.144,
+    longitude: 121.657,
+    initials: "SH"
+  }
+];
 const PORT_COORDINATES = new Map(
   [
     [["PORT CANAVERAL", "CAPE CANAVERAL"], [28.4104, -80.6188]],
@@ -298,11 +409,13 @@ const markers = new Map();
 const routeLines = new Map();
 const portMarkers = new Map();
 const dclPortMarkers = new Map();
+const disneyParkMarkers = new Map();
 let hasFitMap = false;
 let currentSnapshot = null;
 let refreshTimer = null;
 let selectedShipMmsi = null;
 let aboutReturnFocus = null;
+let parksVisible = false;
 
 function setActiveView(target) {
   toggleButtons.forEach((item) => {
@@ -336,7 +449,16 @@ viewAllButton.addEventListener("click", () => {
 });
 
 regionButtons.forEach((button) => {
+  if (button.dataset.region === "parks") {
+    button.setAttribute("aria-pressed", "false");
+  }
+
   button.addEventListener("click", () => {
+    if (button.dataset.region === "parks") {
+      toggleDisneyParks();
+      return;
+    }
+
     fitRegionOnMap(REGION_BOUNDS[button.dataset.region]);
   });
 });
@@ -737,12 +859,46 @@ function portPopupMarkup(port) {
   `;
 }
 
+function parkPopupMarkup(park) {
+  return `
+    <div>
+      <strong>${escapeHtml(park.name)}</strong>
+      <p class="popup-copy">${escapeHtml(park.resort)}</p>
+      <p class="popup-copy">${escapeHtml(park.location)}</p>
+    </div>
+  `;
+}
+
+function parkMarkerIcon(park) {
+  return L.divIcon({
+    className: "park-marker-shell",
+    html: `
+      <div class="park-marker" aria-hidden="true">
+        <svg viewBox="0 0 48 56">
+          <path class="park-marker-pin" d="M24 54s18-16.4 18-32.2C42 11.7 34 3.5 24 3.5S6 11.7 6 21.8C6 37.6 24 54 24 54z" />
+          <path class="park-marker-castle" d="M12.2 34.5h23.6v-9.1l-3.4 1.9v-8.6l-3.4 2V12.6l-4.9-4.2-4.9 4.2v8.1l-3.5-2v8.6l-3.5-1.9z" />
+          <path class="park-marker-gate" d="M20.8 34.5v-5.2c0-2.1 1.4-3.7 3.2-3.7s3.2 1.6 3.2 3.7v5.2z" />
+          <path class="park-marker-roof" d="M10.4 25.4l5.4-7.8 5.3 7.8M18.5 12.6l5.6-7.4 5.4 7.4M27 20.6l5.4-7.8 5.2 7.8" />
+          <text class="park-marker-label" x="24" y="45.2" text-anchor="middle">${escapeHtml(park.initials)}</text>
+        </svg>
+      </div>
+    `,
+    iconSize: PARK_MARKER_SIZE,
+    iconAnchor: [PARK_MARKER_SIZE[0] / 2, PARK_MARKER_SIZE[1] - 2],
+    popupAnchor: [0, -38]
+  });
+}
+
 function getPlottedShipBounds(ships = currentSnapshot?.ships || []) {
   const bounds = ships
     .filter((ship) => ship.latitude !== null && ship.longitude !== null)
     .map((ship) => [ship.latitude, ship.longitude]);
 
   return bounds.length ? bounds : null;
+}
+
+function getDisneyParkBounds() {
+  return DISNEY_PARKS.map((park) => [park.latitude, park.longitude]);
 }
 
 function getPortBounds(ports = currentSnapshot?.ports || []) {
@@ -820,6 +976,54 @@ function syncPorts(ports = []) {
       dclPortMarkers.delete(id);
     }
   }
+}
+
+function syncDisneyParks() {
+  DISNEY_PARKS.forEach((park) => {
+    let marker = disneyParkMarkers.get(park.id);
+    if (!marker) {
+      marker = L.marker([park.latitude, park.longitude], {
+        icon: parkMarkerIcon(park),
+        zIndexOffset: -500
+      }).addTo(map);
+      disneyParkMarkers.set(park.id, marker);
+    } else {
+      marker.setLatLng([park.latitude, park.longitude]);
+    }
+
+    marker.bindPopup(parkPopupMarkup(park));
+    marker.bindTooltip(`${park.name} • ${park.resort}`);
+  });
+}
+
+function removeDisneyParks() {
+  for (const marker of disneyParkMarkers.values()) {
+    map.removeLayer(marker);
+  }
+  disneyParkMarkers.clear();
+  map.closePopup();
+}
+
+function setDisneyParksVisible(isVisible) {
+  parksVisible = isVisible;
+  regionButtons
+    .filter((button) => button.dataset.region === "parks")
+    .forEach((button) => {
+      button.classList.toggle("is-active", parksVisible);
+      button.setAttribute("aria-pressed", String(parksVisible));
+    });
+
+  if (parksVisible) {
+    syncDisneyParks();
+    fitRegionOnMap(getDisneyParkBounds());
+    return;
+  }
+
+  removeDisneyParks();
+}
+
+function toggleDisneyParks() {
+  setDisneyParksVisible(!parksVisible);
 }
 
 function syncMap(ships) {
@@ -928,6 +1132,9 @@ function render(data) {
   feedStatus.textContent = `${connection.status.replace(/_/g, " ")}${cacheStatus}`;
   feedUpdated.textContent = `${formatTime(connection.lastEventAt)}${portStatus}`;
   renderFleet(ships);
+  if (parksVisible) {
+    syncDisneyParks();
+  }
   syncPorts(ports);
   syncMap(ships);
 }
