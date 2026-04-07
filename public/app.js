@@ -38,6 +38,44 @@ const CONTINENT_BOUNDS = {
     [-10, 180]
   ]
 };
+const PORT_COORDINATES = new Map(
+  [
+    [["PORT CANAVERAL", "CAPE CANAVERAL"], [28.4104, -80.6188]],
+    [["FORT LAUDERDALE", "PORT EVERGLADES", "EVERGLADES"], [26.0916, -80.1219]],
+    [["MIAMI"], [25.7781, -80.1794]],
+    [["NASSAU"], [25.0781, -77.3412]],
+    [["CASTAWAY CAY", "GORDA CAY"], [26.0842, -77.5331]],
+    [["LOOKOUT CAY", "LIGHTHOUSE POINT", "ELEUTHERA"], [24.6193, -76.1636]],
+    [["COZUMEL"], [20.5128, -86.9499]],
+    [["GEORGE TOWN", "GRAND CAYMAN"], [19.2866, -81.3744]],
+    [["FALMOUTH"], [18.491, -77.655]],
+    [["TORTOLA", "ROAD TOWN"], [18.4241, -64.6185]],
+    [["ST THOMAS", "SAINT THOMAS", "CHARLOTTE AMALIE"], [18.3358, -64.9307]],
+    [["SAN JUAN"], [18.4602, -66.1057]],
+    [["ST MAARTEN", "SAINT MAARTEN", "PHILIPSBURG"], [18.024, -63.0458]],
+    [["KEY WEST"], [24.5551, -81.78]],
+    [["NEW ORLEANS"], [29.9511, -90.063]],
+    [["GALVESTON"], [29.3102, -94.7937]],
+    [["VANCOUVER"], [49.2897, -123.1119]],
+    [["VICTORIA"], [48.4213, -123.3721]],
+    [["KETCHIKAN"], [55.3422, -131.6461]],
+    [["JUNEAU"], [58.2985, -134.414]],
+    [["SKAGWAY"], [59.4504, -135.3269]],
+    [["ICY STRAIT POINT", "HOONAH"], [58.1283, -135.4611]],
+    [["SITKA"], [57.0516, -135.3376]],
+    [["SOUTHAMPTON"], [50.9008, -1.4136]],
+    [["BARCELONA"], [41.3525, 2.1586]],
+    [["CIVITAVECCHIA", "ROME"], [42.093, 11.791]],
+    [["NAPLES", "NAPOLI"], [40.8407, 14.2676]],
+    [["LIVORNO"], [43.551, 10.3017]],
+    [["MARSEILLE"], [43.3032, 5.3616]],
+    [["GENOA", "GENOVA"], [44.4097, 8.916]],
+    [["PIRAEUS", "ATHENS"], [37.9445, 23.6408]],
+    [["MYKONOS"], [37.4655, 25.3286]],
+    [["SANTORINI", "THIRA"], [36.4166, 25.4324]],
+    [["SINGAPORE"], [1.2644, 103.8207]]
+  ].flatMap(([aliases, coordinate]) => aliases.map((alias) => [alias, coordinate]))
+);
 
 const map = L.map("map", {
   zoomControl: true,
@@ -50,6 +88,8 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 const markers = new Map();
+const routeLines = new Map();
+const portMarkers = new Map();
 let hasFitMap = false;
 let currentSnapshot = null;
 let refreshTimer = null;
@@ -133,6 +173,43 @@ function formatSpeed(speedKnots) {
   }
 
   return `${speedKnots.toFixed(1)} kn`;
+}
+
+function normalizeDestination(value) {
+  if (!value || typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/\b(THE\s+)?PORT\s+OF\b/g, " ")
+    .replace(/[^A-Z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalized || null;
+}
+
+function getDestinationCoordinate(destination) {
+  const normalized = normalizeDestination(destination);
+  if (!normalized) {
+    return null;
+  }
+
+  const directMatch = PORT_COORDINATES.get(normalized);
+  if (directMatch) {
+    return directMatch;
+  }
+
+  for (const [alias, coordinate] of PORT_COORDINATES) {
+    if (alias.length >= 6 && normalized.includes(alias)) {
+      return coordinate;
+    }
+  }
+
+  return null;
 }
 
 function renderFleet(ships) {
@@ -255,6 +332,15 @@ function popupMarkup(ship) {
   `;
 }
 
+function routePopupMarkup(ship) {
+  return `
+    <div>
+      <strong>${ship.destination}</strong>
+      <p class="popup-copy">Next stop for ${ship.name}</p>
+    </div>
+  `;
+}
+
 function getPlottedShipBounds(ships = currentSnapshot?.ships || []) {
   const bounds = ships
     .filter((ship) => ship.latitude !== null && ship.longitude !== null)
@@ -302,6 +388,7 @@ function syncMap(ships) {
         map.removeLayer(existing);
         markers.delete(ship.mmsi);
       }
+      removeShipRoute(ship.mmsi);
       return;
     }
 
@@ -322,6 +409,7 @@ function syncMap(ships) {
     }
 
     marker.bindPopup(popupMarkup(ship));
+    syncShipRoute(ship);
   });
 
   if (selectedShipMmsi && markers.has(selectedShipMmsi)) {
@@ -337,6 +425,60 @@ function syncMap(ships) {
   } else {
     hasFitMap = false;
   }
+}
+
+function removeShipRoute(mmsi) {
+  const routeLine = routeLines.get(mmsi);
+  if (routeLine) {
+    map.removeLayer(routeLine);
+    routeLines.delete(mmsi);
+  }
+
+  const portMarker = portMarkers.get(mmsi);
+  if (portMarker) {
+    map.removeLayer(portMarker);
+    portMarkers.delete(mmsi);
+  }
+}
+
+function syncShipRoute(ship) {
+  const destinationCoordinate = getDestinationCoordinate(ship.destination);
+  if (!destinationCoordinate) {
+    removeShipRoute(ship.mmsi);
+    return;
+  }
+
+  const routePoints = [[ship.latitude, ship.longitude], destinationCoordinate];
+  let routeLine = routeLines.get(ship.mmsi);
+  if (!routeLine) {
+    routeLine = L.polyline(routePoints, {
+      color: "#0f6c74",
+      weight: 2,
+      opacity: 0.78,
+      dashArray: "4 8",
+      lineCap: "round"
+    }).addTo(map);
+    routeLines.set(ship.mmsi, routeLine);
+  } else {
+    routeLine.setLatLngs(routePoints);
+  }
+
+  let portMarker = portMarkers.get(ship.mmsi);
+  if (!portMarker) {
+    portMarker = L.circleMarker(destinationCoordinate, {
+      radius: 5,
+      color: "#0f6c74",
+      weight: 2,
+      fillColor: "#ffffff",
+      fillOpacity: 0.95
+    }).addTo(map);
+    portMarkers.set(ship.mmsi, portMarker);
+  } else {
+    portMarker.setLatLng(destinationCoordinate);
+  }
+
+  routeLine.bindTooltip(`${ship.name} to ${ship.destination}`);
+  portMarker.bindPopup(routePopupMarkup(ship));
 }
 
 function render(data) {
