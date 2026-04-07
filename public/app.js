@@ -286,9 +286,11 @@ const map = L.map("map", {
   worldCopyJump: true
 }).setView([25.7617, -80.1918], 3);
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 18,
-  attribution: "&copy; OpenStreetMap contributors"
+L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+  maxZoom: 20,
+  subdomains: "abcd",
+  attribution:
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>'
 }).addTo(map);
 
 const markers = new Map();
@@ -728,11 +730,11 @@ function syncPorts(ports = []) {
     let marker = dclPortMarkers.get(port.id);
     if (!marker) {
       marker = L.circleMarker([port.latitude, port.longitude], {
-        radius: 4,
-        color: "#123d73",
-        weight: 1.5,
+        radius: 3,
+        color: "#466d91",
+        weight: 1,
         fillColor: "#d6a84f",
-        fillOpacity: 0.92
+        fillOpacity: 0.68
       }).addTo(map);
       dclPortMarkers.set(port.id, marker);
     } else {
@@ -769,8 +771,8 @@ function syncMap(ships) {
         icon: L.divIcon({
           className: "",
           html: `<div class="marker-dot"></div>`,
-          iconSize: [16, 16],
-          iconAnchor: [8, 8]
+          iconSize: [12, 12],
+          iconAnchor: [6, 6]
         })
       }).addTo(map);
 
@@ -826,10 +828,10 @@ function syncShipRoute(ship) {
   let routeLine = routeLines.get(ship.mmsi);
   if (!routeLine) {
     routeLine = L.polyline(routePoints, {
-      color: "#123d73",
-      weight: 2,
-      opacity: 0.78,
-      dashArray: "4 8",
+      color: "#2f6f9d",
+      weight: 2.25,
+      opacity: 0.62,
+      dashArray: "3 9",
       lineCap: "round"
     }).addTo(map);
     routeLines.set(ship.mmsi, routeLine);
@@ -840,11 +842,11 @@ function syncShipRoute(ship) {
   let portMarker = portMarkers.get(ship.mmsi);
   if (!portMarker) {
     portMarker = L.circleMarker(destinationCoordinate, {
-      radius: 5,
-      color: "#123d73",
-      weight: 2,
+      radius: 4,
+      color: "#2f6f9d",
+      weight: 1.5,
       fillColor: "#ffffff",
-      fillOpacity: 0.95
+      fillOpacity: 0.86
     }).addTo(map);
     portMarkers.set(ship.mmsi, portMarker);
   } else {

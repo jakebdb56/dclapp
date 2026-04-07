@@ -420,7 +420,12 @@ body.has-open-modal {
   min-height: calc(100vh - 148px);
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(16, 35, 63, 0.16);
+  border: 1px solid rgba(16, 35, 63, 0.1);
+  background: #dbe8ef;
+}
+
+#map .leaflet-tile-pane {
+  filter: saturate(0.78) contrast(0.96) brightness(1.04);
 }
 
 .panel-map {
@@ -470,6 +475,7 @@ body.has-open-modal {
 
 .leaflet-popup-content-wrapper {
   border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(3, 17, 38, 0.16);
 }
 
 .leaflet-popup-content a {
@@ -478,12 +484,12 @@ body.has-open-modal {
 }
 
 .marker-dot {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: var(--accent-2);
   border: 2px solid white;
-  box-shadow: 0 0 0 4px rgba(18, 61, 115, 0.24);
+  box-shadow: 0 0 0 3px rgba(18, 61, 115, 0.16);
 }
 
 .empty-state {
