@@ -291,6 +291,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 const markers = new Map();
 const routeLines = new Map();
 const portMarkers = new Map();
+const dclPortMarkers = new Map();
 let hasFitMap = false;
 let currentSnapshot = null;
 let refreshTimer = null;
@@ -603,10 +604,33 @@ function routePopupMarkup(ship) {
   `;
 }
 
+function portPopupMarkup(port) {
+  const regionList = port.regions?.length ? port.regions.join(", ") : "Disney Cruise Line port";
+  const link = port.detailUrl
+    ? `<p class="popup-copy"><a href="${port.detailUrl}" target="_blank" rel="noreferrer">View on Disney Cruise Line</a></p>`
+    : "";
+
+  return `
+    <div>
+      <strong>${port.name}</strong>
+      <p class="popup-copy">${regionList}</p>
+      ${link}
+    </div>
+  `;
+}
+
 function getPlottedShipBounds(ships = currentSnapshot?.ships || []) {
   const bounds = ships
     .filter((ship) => ship.latitude !== null && ship.longitude !== null)
     .map((ship) => [ship.latitude, ship.longitude]);
+
+  return bounds.length ? bounds : null;
+}
+
+function getPortBounds(ports = currentSnapshot?.ports || []) {
+  const bounds = ports
+    .filter((port) => port.latitude !== null && port.longitude !== null)
+    .map((port) => [port.latitude, port.longitude]);
 
   return bounds.length ? bounds : null;
 }
@@ -631,8 +655,11 @@ function fitRegionOnMap(bounds) {
 }
 
 function fitAllShipsOnMap(ships) {
-  const bounds = getPlottedShipBounds(ships);
-  if (!bounds) {
+  const bounds = [
+    ...(getPlottedShipBounds(ships) || []),
+    ...(getPortBounds(currentSnapshot?.ports) || [])
+  ];
+  if (!bounds.length) {
     return false;
   }
 
@@ -640,6 +667,41 @@ function fitAllShipsOnMap(ships) {
   setActiveView("map");
   map.fitBounds(bounds, { padding: [36, 36], maxZoom: 5 });
   return true;
+}
+
+function syncPorts(ports = []) {
+  const livePortIds = new Set();
+
+  ports.forEach((port) => {
+    if (port.latitude === null || port.longitude === null) {
+      return;
+    }
+
+    livePortIds.add(port.id);
+    let marker = dclPortMarkers.get(port.id);
+    if (!marker) {
+      marker = L.circleMarker([port.latitude, port.longitude], {
+        radius: 4,
+        color: "#0f6c74",
+        weight: 1.5,
+        fillColor: "#ffffff",
+        fillOpacity: 0.92
+      }).addTo(map);
+      dclPortMarkers.set(port.id, marker);
+    } else {
+      marker.setLatLng([port.latitude, port.longitude]);
+    }
+
+    marker.bindPopup(portPopupMarkup(port));
+    marker.bindTooltip(port.name);
+  });
+
+  for (const [id, marker] of dclPortMarkers) {
+    if (!livePortIds.has(id)) {
+      map.removeLayer(marker);
+      dclPortMarkers.delete(id);
+    }
+  }
 }
 
 function syncMap(ships) {
@@ -678,8 +740,11 @@ function syncMap(ships) {
     markers.get(selectedShipMmsi).openPopup();
   }
 
-  const bounds = getPlottedShipBounds(ships);
-  if (bounds) {
+  const bounds = [
+    ...(getPlottedShipBounds(ships) || []),
+    ...(getPortBounds(currentSnapshot?.ports) || [])
+  ];
+  if (bounds.length) {
     if (!hasFitMap) {
       map.fitBounds(bounds, { padding: [36, 36], maxZoom: 5 });
       hasFitMap = true;
@@ -744,11 +809,13 @@ function syncShipRoute(ship) {
 }
 
 function render(data) {
-  const { connection, ships } = data;
+  const { connection, ships, ports = [] } = data;
   const cacheStatus = connection.cacheStatus ? ` (${connection.cacheStatus.replace(/-/g, " ")})` : "";
+  const portStatus = ports.length ? ` • ${ports.length} DCL ports` : "";
   feedStatus.textContent = `${connection.status.replace(/_/g, " ")}${cacheStatus}`;
-  feedUpdated.textContent = formatTime(connection.lastEventAt);
+  feedUpdated.textContent = `${formatTime(connection.lastEventAt)}${portStatus}`;
   renderFleet(ships);
+  syncPorts(ports);
   syncMap(ships);
 }
 
@@ -826,13 +893,14 @@ function mergeSnapshots(previousSnapshot, nextSnapshot) {
       lastEventAt: nextSnapshot.connection.lastEventAt || previousSnapshot.connection.lastEventAt,
       lastError: hasFreshEvent ? nextSnapshot.connection.lastError : previousSnapshot.connection.lastError
     },
-    ships
+    ships,
+    ports: nextSnapshot.ports?.length ? nextSnapshot.ports : previousSnapshot.ports || []
   };
 }
 
 function persistSnapshot(data) {
   currentSnapshot = data;
-  if (hasUsefulShipData(data)) {
+  if (hasUsefulShipData(data) || data?.ports?.length) {
     localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(data));
   }
 }
