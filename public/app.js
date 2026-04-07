@@ -6,36 +6,64 @@ const fleetDrawer = document.querySelector("#fleet-drawer");
 const fleetToggle = document.querySelector("#fleet-toggle");
 const mapToolbar = document.querySelector(".map-toolbar");
 const viewAllButton = document.querySelector("#view-all");
-const continentButtons = Array.from(document.querySelectorAll("[data-continent]"));
+const regionButtons = Array.from(document.querySelectorAll("[data-region]"));
 const toggleButtons = Array.from(document.querySelectorAll(".toggle-button"));
 const panels = Array.from(document.querySelectorAll("[data-view]"));
 const POLL_INTERVAL_MS = 60000;
 const COLD_START_RETRY_MS = 15000;
 const SNAPSHOT_STORAGE_KEY = "dcl-tracker-snapshot";
-const CONTINENT_BOUNDS = {
-  northAmerica: [
-    [5, -170],
-    [83, -50]
+const REGION_BOUNDS = {
+  bahamas: [
+    [22, -80.5],
+    [28.7, -72.5]
   ],
-  southAmerica: [
-    [-56, -82],
-    [13, -34]
+  caribbean: [
+    [9, -90],
+    [28, -58]
   ],
   europe: [
-    [35, -25],
-    [72, 45]
+    [34, -13],
+    [72, 32]
   ],
-  africa: [
-    [-35, -20],
-    [38, 52]
+  alaska: [
+    [47, -146],
+    [61, -119]
   ],
-  asia: [
-    [-10, 25],
-    [82, 180]
+  bermudaCanada: [
+    [31, -82],
+    [51, -52]
   ],
-  australia: [
-    [-47, 110],
-    [-10, 180]
+  mexicoPacific: [
+    [14, -124],
+    [34, -93]
+  ],
+  panamaCanal: [
+    [5, -121],
+    [28, -74]
+  ],
+  transatlantic: [
+    [24, -85],
+    [56, 15]
+  ],
+  pacificCoast: [
+    [29, -132],
+    [51, -115]
+  ],
+  hawaii: [
+    [18, -161],
+    [23, -154]
+  ],
+  southPacific: [
+    [-35, 140],
+    [23, 205]
+  ],
+  australiaNewZealand: [
+    [-48, 110],
+    [-9, 180]
+  ],
+  singapore: [
+    [-2, 100],
+    [4, 107]
   ]
 };
 const PORT_COORDINATES = new Map(
@@ -299,9 +327,9 @@ viewAllButton.addEventListener("click", () => {
   fitAllShipsOnMap();
 });
 
-continentButtons.forEach((button) => {
+regionButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    fitRegionOnMap(CONTINENT_BOUNDS[button.dataset.continent]);
+    fitRegionOnMap(REGION_BOUNDS[button.dataset.region]);
   });
 });
 
