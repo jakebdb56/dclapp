@@ -4,6 +4,7 @@ const feedStatus = document.querySelector("#feed-status");
 const feedUpdated = document.querySelector("#feed-updated");
 const fleetDrawer = document.querySelector("#fleet-drawer");
 const fleetToggle = document.querySelector("#fleet-toggle");
+const mapToolbar = document.querySelector(".map-toolbar");
 const viewAllButton = document.querySelector("#view-all");
 const continentButtons = Array.from(document.querySelectorAll("[data-continent]"));
 const toggleButtons = Array.from(document.querySelectorAll(".toggle-button"));
@@ -90,6 +91,17 @@ continentButtons.forEach((button) => {
     fitRegionOnMap(CONTINENT_BOUNDS[button.dataset.continent]);
   });
 });
+
+function updateMapToolbarHeight() {
+  document.documentElement.style.setProperty("--map-toolbar-height", `${mapToolbar.offsetHeight}px`);
+}
+
+updateMapToolbarHeight();
+if ("ResizeObserver" in window) {
+  new ResizeObserver(updateMapToolbarHeight).observe(mapToolbar);
+} else {
+  window.addEventListener("resize", updateMapToolbarHeight);
+}
 
 function formatTime(value) {
   if (!value) {

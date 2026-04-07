@@ -11,6 +11,7 @@
   --warn: #ce7d1a;
   --bad: #b44343;
   --shadow: 0 20px 50px rgba(18, 38, 54, 0.12);
+  --map-toolbar-height: 4rem;
 }
 
 * {
@@ -304,10 +305,10 @@ body {
 .fleet-drawer {
   position: absolute;
   z-index: 500;
-  top: 5rem;
+  top: calc(var(--map-toolbar-height) + 1.25rem);
   left: 1.25rem;
   width: min(390px, calc(100% - 2.5rem));
-  max-height: calc(100% - 6rem);
+  max-height: calc(100% - var(--map-toolbar-height) - 2.25rem);
   overflow: auto;
   padding: 0.95rem;
   border: 1px solid rgba(29, 43, 56, 0.14);
@@ -404,10 +405,7 @@ body {
   .map-actions {
     flex: 1 1 100%;
     justify-content: flex-start;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 0.15rem;
-    scrollbar-width: thin;
+    flex-wrap: wrap;
   }
 
   .map-action-button,
@@ -422,10 +420,10 @@ body {
   }
 
   .fleet-drawer {
-    top: 5.7rem;
+    top: calc(var(--map-toolbar-height) + 1.5rem);
     left: 0.75rem;
     width: calc(100% - 1.5rem);
-    max-height: calc(100% - 6.55rem);
+    max-height: calc(100% - var(--map-toolbar-height) - 2.25rem);
     border-radius: 20px;
   }
 }
