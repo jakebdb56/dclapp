@@ -7,6 +7,7 @@ Mobile-friendly web app for tracking Disney Cruise Line ships with AIS position 
 - Lists Disney Cruise Line ships in a mobile-friendly card layout
 - Shows each ship's most recent reported latitude and longitude
 - Displays the next reported destination and ETA when AIS data is available
+- Scrapes the Disney Destiny detail page at `https://www.vesselfinder.com/vessels/details/9834741`
 - Renders ship markers on a live map
 - Uses a Vercel-compatible API route so your VesselFinder API key is not exposed in the browser
 
@@ -46,7 +47,7 @@ The frontend is static and the data comes from the serverless route at `/api/shi
 
 ## Scheduled refresh
 
-This repo includes a GitHub Actions workflow at `.github/workflows/warm-cache.yml` that warms the Redis cache every 15 minutes.
+This repo includes a GitHub Actions workflow at `.github/workflows/warm-cache.yml` that warms the Redis cache every hour. Each warm-up calls `/api/refresh-ships`, which also scrapes the Disney Destiny VesselFinder details page.
 
 To enable it:
 
@@ -65,6 +66,7 @@ You can also run the workflow manually with `Run workflow` from the Actions tab.
 ## Notes
 
 - VesselFinder requests are made from the serverless API route so the API key stays out of the browser.
+- The Disney Destiny details-page scrape is enabled by default and can be disabled with `VESSELFINDER_DETAILS_SCRAPE=false`.
 - On Vercel, `/api/ships` serves the last good cached snapshot from Redis and never waits on a live VesselFinder refresh.
 - The optional `/api/refresh-ships` endpoint can be used for manual warming or scheduled refreshes. If you set `CRON_SECRET`, send it as a bearer token or `?secret=...`.
 - Vercel Hobby cron jobs only run once per day according to Vercel's docs, so frequent warming requires either a higher Vercel plan or an external scheduler calling `/api/refresh-ships`.

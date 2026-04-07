@@ -3,7 +3,7 @@ name: Warm Disney Cache
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "0 * * * *"
 
 jobs:
   warm-cache:

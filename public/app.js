@@ -314,7 +314,15 @@ function mergeShips(previousShip, nextShip) {
     speedKnots: nextShip.speedKnots ?? previousShip.speedKnots,
     navigationStatus: nextShip.navigationStatus ?? previousShip.navigationStatus,
     lastSeen: nextShip.lastSeen || previousShip.lastSeen,
-    sourceMessageType: nextShip.sourceMessageType || previousShip.sourceMessageType
+    sourceMessageType: nextShip.sourceMessageType || previousShip.sourceMessageType,
+    vesselArea: nextShip.vesselArea || previousShip.vesselArea,
+    currentDraughtMeters: nextShip.currentDraughtMeters ?? previousShip.currentDraughtMeters,
+    callsign: nextShip.callsign || previousShip.callsign,
+    aisType: nextShip.aisType || previousShip.aisType,
+    aisFlag: nextShip.aisFlag || previousShip.aisFlag,
+    lastPort: nextShip.lastPort || previousShip.lastPort,
+    lastPortDeparture: nextShip.lastPortDeparture || previousShip.lastPortDeparture,
+    detailsUrl: nextShip.detailsUrl || previousShip.detailsUrl
   };
 }
 
