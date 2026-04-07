@@ -28,8 +28,8 @@ export default async function handler(req, res) {
   }
 
   const result = await refreshAndCacheSnapshot({
-    attempts: 2,
-    timeoutMs: 25000
+    attempts: 1,
+    timeoutMs: 9000
   });
 
   const payload = {

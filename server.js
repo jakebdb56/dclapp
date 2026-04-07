@@ -47,8 +47,8 @@ async function handleShipsApi(res) {
 
 async function handleRefreshApi(res) {
   const result = await refreshAndCacheSnapshot({
-    attempts: 2,
-    timeoutMs: 25000
+    attempts: 1,
+    timeoutMs: 9000
   });
 
   res.writeHead(200, {
