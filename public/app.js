@@ -604,17 +604,26 @@ function routePopupMarkup(ship) {
   `;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function portPopupMarkup(port) {
   const regionList = port.regions?.length ? port.regions.join(", ") : "Disney Cruise Line port";
-  const link = port.detailUrl
-    ? `<p class="popup-copy"><a href="${port.detailUrl}" target="_blank" rel="noreferrer">View on Disney Cruise Line</a></p>`
-    : "";
+  const portName = escapeHtml(port.name);
+  const portTitle = port.detailUrl
+    ? `<a href="${escapeHtml(port.detailUrl)}" target="_blank" rel="noreferrer">${portName}</a>`
+    : portName;
 
   return `
     <div>
-      <strong>${port.name}</strong>
-      <p class="popup-copy">${regionList}</p>
-      ${link}
+      <strong>${portTitle}</strong>
+      <p class="popup-copy">${escapeHtml(regionList)}</p>
     </div>
   `;
 }
