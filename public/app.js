@@ -545,7 +545,7 @@ function formatTime(value) {
 }
 
 function formatCoordinate(latitude, longitude) {
-  if (latitude === null || longitude === null) {
+  if (latitude === null || latitude === undefined || longitude === null || longitude === undefined) {
     return "Awaiting position";
   }
 
@@ -553,7 +553,7 @@ function formatCoordinate(latitude, longitude) {
 }
 
 function formatSpeed(speedKnots) {
-  if (speedKnots === null || Number.isNaN(speedKnots)) {
+  if (speedKnots === null || speedKnots === undefined || Number.isNaN(speedKnots)) {
     return "Unknown";
   }
 
@@ -700,7 +700,7 @@ function buildSeaRoute(ship, destinationCoordinate) {
 }
 
 function getShipFleetOrder(ship) {
-  return ship.fleetOrder ?? DISNEY_SHIP_FLEET_ORDER.get(ship.mmsi) ?? Number.MAX_SAFE_INTEGER;
+  return ship.fleetOrder ?? DISNEY_SHIP_FLEET_ORDER.get(shipKey(ship)) ?? Number.MAX_SAFE_INTEGER;
 }
 
 function sortShipsByFleetAge(ships) {
@@ -712,14 +712,14 @@ function sortShipsByFleetAge(ships) {
 
 function shipNameMarkup(ship) {
   const shipName = escapeHtml(ship.name);
-  const officialShipUrl = ship.officialShipUrl || DISNEY_SHIP_OFFICIAL_URLS.get(ship.mmsi);
+  const officialShipUrl = ship.officialShipUrl || DISNEY_SHIP_OFFICIAL_URLS.get(shipKey(ship));
   return officialShipUrl
     ? `<a class="ship-name-link" href="${escapeHtml(officialShipUrl)}" target="_blank" rel="noreferrer">${shipName}</a>`
     : shipName;
 }
 
 function renderFleet(ships) {
-  const shipsWithPosition = ships.filter((ship) => ship.latitude !== null && ship.longitude !== null).length;
+  const shipsWithPosition = ships.filter((ship) => hasCoordinatePair(ship)).length;
   fleetSummary.textContent = `${shipsWithPosition} of ${ships.length} ships currently plotted`;
 
   if (!ships.length) {
@@ -729,9 +729,9 @@ function renderFleet(ships) {
 
   shipList.innerHTML = sortShipsByFleetAge(ships)
     .map((ship) => {
-      const hasPosition = ship.latitude !== null && ship.longitude !== null;
+      const hasPosition = hasCoordinatePair(ship);
       const cardClasses = ["ship-card", hasPosition ? "has-position" : "no-position"];
-      if (selectedShipMmsi === ship.mmsi) {
+      if (selectedShipMmsi === shipKey(ship)) {
         cardClasses.push("is-selected");
       }
 
@@ -784,15 +784,16 @@ function isInteractiveElement(element) {
 }
 
 function focusShipOnMap(mmsi) {
-  const marker = markers.get(mmsi);
-  const ship = currentSnapshot?.ships?.find((item) => item.mmsi === mmsi);
+  const id = shipKey(mmsi);
+  const marker = markers.get(id);
+  const ship = currentSnapshot?.ships?.find((item) => shipKey(item) === id);
 
-  selectedShipMmsi = mmsi;
+  selectedShipMmsi = id;
   if (currentSnapshot) {
     renderFleet(currentSnapshot.ships);
   }
 
-  if (!marker || !ship || ship.latitude === null || ship.longitude === null) {
+  if (!marker || !ship || !hasCoordinatePair(ship)) {
     return;
   }
 
@@ -942,7 +943,7 @@ function parkMarkerIcon(park) {
 
 function getPlottedShipBounds(ships = currentSnapshot?.ships || []) {
   const bounds = ships
-    .filter((ship) => ship.latitude !== null && ship.longitude !== null)
+    .filter((ship) => hasCoordinatePair(ship))
     .map((ship) => [ship.latitude, ship.longitude]);
 
   return bounds.length ? bounds : null;
@@ -1078,24 +1079,28 @@ function toggleDisneyParks() {
 }
 
 function syncMap(ships) {
+  const liveMarkerIds = new Set();
+
   ships.forEach((ship) => {
-    if (ship.latitude === null || ship.longitude === null) {
-      const existing = markers.get(ship.mmsi);
+    const id = shipKey(ship);
+    if (!hasCoordinatePair(ship)) {
+      const existing = markers.get(id);
       if (existing) {
         map.removeLayer(existing);
-        markers.delete(ship.mmsi);
+        markers.delete(id);
       }
-      removeShipRoute(ship.mmsi);
+      removeShipRoute(id);
       return;
     }
 
-    let marker = markers.get(ship.mmsi);
+    liveMarkerIds.add(id);
+    let marker = markers.get(id);
     if (!marker) {
       marker = L.marker([ship.latitude, ship.longitude], {
         icon: shipMarkerIcon()
       }).addTo(map);
 
-      markers.set(ship.mmsi, marker);
+      markers.set(id, marker);
     } else {
       marker.setLatLng([ship.latitude, ship.longitude]);
     }
@@ -1106,6 +1111,14 @@ function syncMap(ships) {
 
   if (selectedShipMmsi && markers.has(selectedShipMmsi)) {
     markers.get(selectedShipMmsi).openPopup();
+  }
+
+  for (const [id, marker] of markers) {
+    if (!liveMarkerIds.has(id)) {
+      map.removeLayer(marker);
+      markers.delete(id);
+      removeShipRoute(id);
+    }
   }
 
   const bounds = [
@@ -1123,28 +1136,30 @@ function syncMap(ships) {
 }
 
 function removeShipRoute(mmsi) {
-  const routeLine = routeLines.get(mmsi);
+  const id = shipKey(mmsi);
+  const routeLine = routeLines.get(id);
   if (routeLine) {
     map.removeLayer(routeLine);
-    routeLines.delete(mmsi);
+    routeLines.delete(id);
   }
 
-  const portMarker = portMarkers.get(mmsi);
+  const portMarker = portMarkers.get(id);
   if (portMarker) {
     map.removeLayer(portMarker);
-    portMarkers.delete(mmsi);
+    portMarkers.delete(id);
   }
 }
 
 function syncShipRoute(ship) {
+  const id = shipKey(ship);
   const destinationCoordinate = getDestinationCoordinate(ship.destination);
   if (!destinationCoordinate) {
-    removeShipRoute(ship.mmsi);
+    removeShipRoute(id);
     return;
   }
 
   const routePoints = buildSeaRoute(ship, destinationCoordinate);
-  let routeLine = routeLines.get(ship.mmsi);
+  let routeLine = routeLines.get(id);
   if (!routeLine) {
     routeLine = L.polyline(routePoints, {
       color: "#2f6f9d",
@@ -1153,12 +1168,12 @@ function syncShipRoute(ship) {
       dashArray: "3 9",
       lineCap: "round"
     }).addTo(map);
-    routeLines.set(ship.mmsi, routeLine);
+    routeLines.set(id, routeLine);
   } else {
     routeLine.setLatLngs(routePoints);
   }
 
-  let portMarker = portMarkers.get(ship.mmsi);
+  let portMarker = portMarkers.get(id);
   if (!portMarker) {
     portMarker = L.circleMarker(destinationCoordinate, {
       radius: 4,
@@ -1167,7 +1182,7 @@ function syncShipRoute(ship) {
       fillColor: "#ffffff",
       fillOpacity: 0.86
     }).addTo(map);
-    portMarkers.set(ship.mmsi, portMarker);
+    portMarkers.set(id, portMarker);
   } else {
     portMarker.setLatLng(destinationCoordinate);
   }
@@ -1204,21 +1219,46 @@ function hasUsefulShipData(snapshot) {
   );
 }
 
+function shipKey(shipOrMmsi) {
+  return String(typeof shipOrMmsi === "object" ? shipOrMmsi.mmsi : shipOrMmsi);
+}
+
+function hasCoordinatePair(ship) {
+  return ship.latitude !== null && ship.latitude !== undefined
+    && ship.longitude !== null && ship.longitude !== undefined;
+}
+
+function timestampMs(value) {
+  const time = value ? new Date(value).getTime() : Number.NaN;
+  return Number.isFinite(time) ? time : null;
+}
+
+function shouldCarryPreviousPosition(previousShip, nextShip) {
+  if (hasCoordinatePair(nextShip)) {
+    return false;
+  }
+
+  const previousLastSeen = timestampMs(previousShip.lastSeen);
+  const nextLastSeen = timestampMs(nextShip.lastSeen);
+  return previousLastSeen === null || nextLastSeen === null || nextLastSeen <= previousLastSeen;
+}
+
 function mergeShips(previousShip, nextShip) {
   if (!previousShip) {
     return nextShip;
   }
+  const carryPreviousPosition = shouldCarryPreviousPosition(previousShip, nextShip);
 
   return {
     ...previousShip,
     ...nextShip,
     destination: nextShip.destination || previousShip.destination,
     eta: nextShip.eta || previousShip.eta,
-    latitude: nextShip.latitude ?? previousShip.latitude,
-    longitude: nextShip.longitude ?? previousShip.longitude,
-    course: nextShip.course ?? previousShip.course,
-    heading: nextShip.heading ?? previousShip.heading,
-    speedKnots: nextShip.speedKnots ?? previousShip.speedKnots,
+    latitude: carryPreviousPosition ? previousShip.latitude : nextShip.latitude ?? null,
+    longitude: carryPreviousPosition ? previousShip.longitude : nextShip.longitude ?? null,
+    course: carryPreviousPosition ? previousShip.course : nextShip.course ?? null,
+    heading: carryPreviousPosition ? previousShip.heading : nextShip.heading ?? null,
+    speedKnots: carryPreviousPosition ? previousShip.speedKnots : nextShip.speedKnots ?? null,
     navigationStatus: nextShip.navigationStatus ?? previousShip.navigationStatus,
     lastSeen: nextShip.lastSeen || previousShip.lastSeen,
     sourceMessageType: nextShip.sourceMessageType || previousShip.sourceMessageType,
@@ -1248,8 +1288,8 @@ function mergeSnapshots(previousSnapshot, nextSnapshot) {
     };
   }
 
-  const previousShips = new Map(previousSnapshot.ships.map((ship) => [ship.mmsi, ship]));
-  const ships = nextSnapshot.ships.map((ship) => mergeShips(previousShips.get(ship.mmsi), ship));
+  const previousShips = new Map(previousSnapshot.ships.map((ship) => [shipKey(ship), ship]));
+  const ships = nextSnapshot.ships.map((ship) => mergeShips(previousShips.get(shipKey(ship)), ship));
   const hasFreshEvent = Boolean(nextSnapshot.connection.lastEventAt);
   const hasCachedUsefulData = hasUsefulShipData(previousSnapshot);
 
