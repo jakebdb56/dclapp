@@ -5,7 +5,8 @@
   "description": "Mobile-friendly Disney Cruise Line tracker powered by scraped vessel pages",
   "type": "module",
   "dependencies": {
-    "@upstash/redis": "^1.35.3"
+    "@upstash/redis": "^1.35.3",
+    "@vercel/analytics": "^2.0.1"
   },
   "scripts": {
     "start": "node --env-file=.env server.js"
