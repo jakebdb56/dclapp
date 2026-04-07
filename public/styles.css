@@ -185,6 +185,7 @@ body {
 }
 
 .map-action-button {
+  flex: 0 0 auto;
   border: 1px solid rgba(15, 108, 116, 0.24);
   background: rgba(255, 255, 255, 0.72);
   color: var(--accent);
@@ -393,10 +394,27 @@ body {
 
   .map-toolbar {
     align-items: flex-start;
+    gap: 0.65rem;
   }
 
   .map-toolbar p {
     display: none;
+  }
+
+  .map-actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.15rem;
+    scrollbar-width: thin;
+  }
+
+  .map-action-button,
+  .drawer-toggle {
+    padding: 0.62rem 0.78rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
   }
 
   #map {
@@ -404,10 +422,10 @@ body {
   }
 
   .fleet-drawer {
-    top: 4.4rem;
+    top: 5.7rem;
     left: 0.75rem;
     width: calc(100% - 1.5rem);
-    max-height: calc(100% - 5.25rem);
+    max-height: calc(100% - 6.55rem);
     border-radius: 20px;
   }
 }
