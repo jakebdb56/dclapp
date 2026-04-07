@@ -9,6 +9,9 @@ const viewAllButton = document.querySelector("#view-all");
 const regionButtons = Array.from(document.querySelectorAll("[data-region]"));
 const toggleButtons = Array.from(document.querySelectorAll(".toggle-button"));
 const panels = Array.from(document.querySelectorAll("[data-view]"));
+const aboutOpen = document.querySelector("#about-open");
+const aboutModal = document.querySelector("#about-modal");
+const aboutCloseButtons = Array.from(document.querySelectorAll("[data-about-close]"));
 const POLL_INTERVAL_MS = 60000;
 const COLD_START_RETRY_MS = 15000;
 const SNAPSHOT_STORAGE_KEY = "dcl-tracker-snapshot";
@@ -296,6 +299,7 @@ let hasFitMap = false;
 let currentSnapshot = null;
 let refreshTimer = null;
 let selectedShipMmsi = null;
+let aboutReturnFocus = null;
 
 function setActiveView(target) {
   toggleButtons.forEach((item) => {
@@ -332,6 +336,40 @@ regionButtons.forEach((button) => {
   button.addEventListener("click", () => {
     fitRegionOnMap(REGION_BOUNDS[button.dataset.region]);
   });
+});
+
+function openAboutModal() {
+  aboutReturnFocus = document.activeElement;
+  aboutModal.hidden = false;
+  document.body.classList.add("has-open-modal");
+  requestAnimationFrame(() => {
+    aboutModal.classList.add("is-open");
+    aboutModal.querySelector(".about-close").focus();
+  });
+}
+
+function closeAboutModal() {
+  aboutModal.classList.remove("is-open");
+  document.body.classList.remove("has-open-modal");
+  window.setTimeout(() => {
+    aboutModal.hidden = true;
+    if (aboutReturnFocus instanceof HTMLElement) {
+      aboutReturnFocus.focus();
+    }
+    aboutReturnFocus = null;
+  }, 220);
+}
+
+aboutOpen.addEventListener("click", openAboutModal);
+
+aboutCloseButtons.forEach((button) => {
+  button.addEventListener("click", closeAboutModal);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !aboutModal.hidden) {
+    closeAboutModal();
+  }
 });
 
 function updateMapToolbarHeight() {
