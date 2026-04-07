@@ -771,11 +771,11 @@ function syncPorts(ports = []) {
     let marker = dclPortMarkers.get(port.id);
     if (!marker) {
       marker = L.circleMarker([port.latitude, port.longitude], {
-        radius: 3,
-        color: "#466d91",
-        weight: 1,
-        fillColor: "#d6a84f",
-        fillOpacity: 0.68
+        radius: 6,
+        color: "#7b251f",
+        weight: 2,
+        fillColor: "#d94f3d",
+        fillOpacity: 0.9
       }).addTo(map);
       dclPortMarkers.set(port.id, marker);
     } else {
