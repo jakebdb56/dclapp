@@ -5,11 +5,38 @@ const feedUpdated = document.querySelector("#feed-updated");
 const fleetDrawer = document.querySelector("#fleet-drawer");
 const fleetToggle = document.querySelector("#fleet-toggle");
 const viewAllButton = document.querySelector("#view-all");
+const continentButtons = Array.from(document.querySelectorAll("[data-continent]"));
 const toggleButtons = Array.from(document.querySelectorAll(".toggle-button"));
 const panels = Array.from(document.querySelectorAll("[data-view]"));
 const POLL_INTERVAL_MS = 60000;
 const COLD_START_RETRY_MS = 15000;
 const SNAPSHOT_STORAGE_KEY = "dcl-tracker-snapshot";
+const CONTINENT_BOUNDS = {
+  northAmerica: [
+    [5, -170],
+    [83, -50]
+  ],
+  southAmerica: [
+    [-56, -82],
+    [13, -34]
+  ],
+  europe: [
+    [35, -25],
+    [72, 45]
+  ],
+  africa: [
+    [-35, -20],
+    [38, 52]
+  ],
+  asia: [
+    [-10, 25],
+    [82, 180]
+  ],
+  australia: [
+    [-47, 110],
+    [-10, 180]
+  ]
+};
 
 const map = L.map("map", {
   zoomControl: true,
@@ -56,6 +83,12 @@ fleetToggle.addEventListener("click", () => {
 
 viewAllButton.addEventListener("click", () => {
   fitAllShipsOnMap();
+});
+
+continentButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    fitRegionOnMap(CONTINENT_BOUNDS[button.dataset.continent]);
+  });
 });
 
 function formatTime(value) {
@@ -218,19 +251,34 @@ function getPlottedShipBounds(ships = currentSnapshot?.ships || []) {
   return bounds.length ? bounds : null;
 }
 
+function clearSelectedShip() {
+  selectedShipMmsi = null;
+  map.closePopup();
+  if (currentSnapshot) {
+    renderFleet(currentSnapshot.ships);
+  }
+}
+
+function fitRegionOnMap(bounds) {
+  if (!bounds) {
+    return false;
+  }
+
+  clearSelectedShip();
+  setActiveView("map");
+  map.fitBounds(bounds, { padding: [36, 36] });
+  return true;
+}
+
 function fitAllShipsOnMap(ships) {
   const bounds = getPlottedShipBounds(ships);
   if (!bounds) {
     return false;
   }
 
-  selectedShipMmsi = null;
-  map.closePopup();
+  clearSelectedShip();
   setActiveView("map");
   map.fitBounds(bounds, { padding: [36, 36], maxZoom: 5 });
-  if (currentSnapshot) {
-    renderFleet(currentSnapshot.ships);
-  }
   return true;
 }
 

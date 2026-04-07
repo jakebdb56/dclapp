@@ -156,6 +156,10 @@ body {
   margin-bottom: 1rem;
 }
 
+.map-toolbar {
+  flex-wrap: wrap;
+}
+
 .map-toolbar h2,
 .drawer-header h2,
 .section-heading h2 {
@@ -172,10 +176,12 @@ body {
 
 .map-actions {
   display: flex;
+  flex: 1 1 560px;
   gap: 0.5rem;
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .map-action-button {
