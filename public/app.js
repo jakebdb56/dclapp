@@ -76,6 +76,179 @@ const PORT_COORDINATES = new Map(
     [["SINGAPORE"], [1.2644, 103.8207]]
   ].flatMap(([aliases, coordinate]) => aliases.map((alias) => [alias, coordinate]))
 );
+const SEA_ROUTE_WAYPOINTS = new Map(
+  [
+    [
+      ["PORT CANAVERAL", "CAPE CANAVERAL"],
+      [
+        [24.35, -82.75],
+        [24.32, -80.2],
+        [26.2, -79.4],
+        [27.8, -79.55],
+        [28.28, -80.22]
+      ]
+    ],
+    [
+      ["FORT LAUDERDALE", "PORT EVERGLADES", "EVERGLADES", "MIAMI"],
+      [
+        [24.35, -82.75],
+        [24.32, -80.2],
+        [25.45, -79.82],
+        [26.05, -79.95]
+      ]
+    ],
+    [
+      ["NASSAU"],
+      [
+        [27.8, -79.55],
+        [26.55, -78.65],
+        [25.28, -77.55]
+      ]
+    ],
+    [
+      ["CASTAWAY CAY", "GORDA CAY"],
+      [
+        [27.8, -79.55],
+        [26.85, -78.3],
+        [26.25, -77.75]
+      ]
+    ],
+    [
+      ["LOOKOUT CAY", "LIGHTHOUSE POINT", "ELEUTHERA"],
+      [
+        [26.55, -78.65],
+        [25.45, -77.25],
+        [24.75, -76.35]
+      ]
+    ],
+    [
+      ["COZUMEL"],
+      [
+        [27.8, -79.55],
+        [26.2, -79.4],
+        [24.32, -80.2],
+        [24.35, -82.75],
+        [22.6, -85.85],
+        [20.75, -86.75]
+      ]
+    ],
+    [
+      ["GEORGE TOWN", "GRAND CAYMAN"],
+      [
+        [27.8, -79.55],
+        [26.2, -79.4],
+        [24.32, -80.2],
+        [24.35, -82.75],
+        [22.2, -84.6],
+        [19.6, -81.55]
+      ]
+    ],
+    [
+      ["FALMOUTH"],
+      [
+        [27.8, -79.55],
+        [26.2, -79.4],
+        [24.32, -80.2],
+        [24.35, -82.75],
+        [22.2, -84.6],
+        [19.6, -81.55],
+        [18.7, -78.4]
+      ]
+    ],
+    [
+      ["TORTOLA", "ROAD TOWN", "ST THOMAS", "SAINT THOMAS", "CHARLOTTE AMALIE"],
+      [
+        [25.45, -77.25],
+        [23.8, -74.8],
+        [21.1, -70.2],
+        [18.8, -65.4]
+      ]
+    ],
+    [
+      ["SAN JUAN", "ST MAARTEN", "SAINT MAARTEN", "PHILIPSBURG"],
+      [
+        [25.45, -77.25],
+        [23.8, -74.8],
+        [21.1, -70.2],
+        [18.7, -66.5]
+      ]
+    ],
+    [
+      ["KEY WEST"],
+      [
+        [24.35, -82.75],
+        [24.45, -81.95]
+      ]
+    ],
+    [
+      ["GALVESTON"],
+      [
+        [25.45, -79.82],
+        [24.32, -80.2],
+        [24.35, -82.75],
+        [25.2, -87.5],
+        [27.0, -92.0],
+        [28.85, -94.45]
+      ]
+    ],
+    [
+      ["NEW ORLEANS"],
+      [
+        [25.45, -79.82],
+        [24.32, -80.2],
+        [24.35, -82.75],
+        [25.2, -87.5],
+        [28.45, -89.0],
+        [29.1, -89.25]
+      ]
+    ],
+    [
+      ["VANCOUVER", "VICTORIA", "KETCHIKAN", "JUNEAU", "SKAGWAY", "ICY STRAIT POINT", "HOONAH", "SITKA"],
+      [
+        [48.35, -124.5],
+        [50.2, -128.2],
+        [52.6, -131.4],
+        [55.2, -134.0],
+        [57.35, -136.1]
+      ]
+    ],
+    [
+      ["SOUTHAMPTON"],
+      [
+        [49.5, -5.4],
+        [50.0, -3.2],
+        [50.35, -1.7]
+      ]
+    ],
+    [
+      ["BARCELONA", "MARSEILLE", "GENOA", "GENOVA", "LIVORNO", "CIVITAVECCHIA", "ROME", "NAPLES", "NAPOLI"],
+      [
+        [41.0, 3.0],
+        [41.6, 6.0],
+        [42.4, 8.5],
+        [42.5, 10.2],
+        [41.7, 12.1],
+        [40.9, 13.7]
+      ]
+    ],
+    [
+      ["PIRAEUS", "ATHENS", "MYKONOS", "SANTORINI", "THIRA"],
+      [
+        [38.5, 18.2],
+        [37.0, 21.2],
+        [37.2, 23.6],
+        [37.0, 25.1]
+      ]
+    ],
+    [
+      ["SINGAPORE"],
+      [
+        [1.1, 104.2],
+        [1.2, 103.9]
+      ]
+    ]
+  ].flatMap(([aliases, waypoints]) => aliases.map((alias) => [alias, waypoints]))
+);
 
 const map = L.map("map", {
   zoomControl: true,
@@ -210,6 +383,67 @@ function getDestinationCoordinate(destination) {
   }
 
   return null;
+}
+
+function getSeaRouteWaypoints(destination) {
+  const normalized = normalizeDestination(destination);
+  if (!normalized) {
+    return [];
+  }
+
+  const directMatch = SEA_ROUTE_WAYPOINTS.get(normalized);
+  if (directMatch) {
+    return directMatch;
+  }
+
+  for (const [alias, waypoints] of SEA_ROUTE_WAYPOINTS) {
+    if (alias.length >= 6 && normalized.includes(alias)) {
+      return waypoints;
+    }
+  }
+
+  return [];
+}
+
+function routeDistance(pointA, pointB) {
+  const latitudeDelta = pointA[0] - pointB[0];
+  const longitudeDelta = (pointA[1] - pointB[1]) * Math.cos(((pointA[0] + pointB[0]) / 2) * Math.PI / 180);
+
+  return Math.hypot(latitudeDelta, longitudeDelta);
+}
+
+function buildSeaRoute(ship, destinationCoordinate) {
+  const start = [ship.latitude, ship.longitude];
+  const waypoints = getSeaRouteWaypoints(ship.destination);
+  if (!waypoints.length || routeDistance(start, destinationCoordinate) < 0.35) {
+    return [start, destinationCoordinate];
+  }
+
+  const closestWaypointIndex = waypoints.reduce(
+    (closestIndex, waypoint, index) =>
+      routeDistance(start, waypoint) < routeDistance(start, waypoints[closestIndex]) ? index : closestIndex,
+    0
+  );
+  const destinationWaypointIndex = waypoints.reduce(
+    (closestIndex, waypoint, index) =>
+      routeDistance(destinationCoordinate, waypoint) < routeDistance(destinationCoordinate, waypoints[closestIndex])
+        ? index
+        : closestIndex,
+    0
+  );
+  const routeWaypoints =
+    closestWaypointIndex <= destinationWaypointIndex
+      ? waypoints.slice(closestWaypointIndex, destinationWaypointIndex + 1)
+      : waypoints.slice(destinationWaypointIndex, closestWaypointIndex + 1).reverse();
+
+  if (
+    routeWaypoints.length &&
+    routeDistance(start, destinationCoordinate) < routeDistance(start, routeWaypoints[0])
+  ) {
+    return [start, destinationCoordinate];
+  }
+
+  return [start, ...routeWaypoints, destinationCoordinate];
 }
 
 function renderFleet(ships) {
@@ -448,7 +682,7 @@ function syncShipRoute(ship) {
     return;
   }
 
-  const routePoints = [[ship.latitude, ship.longitude], destinationCoordinate];
+  const routePoints = buildSeaRoute(ship, destinationCoordinate);
   let routeLine = routeLines.get(ship.mmsi);
   if (!routeLine) {
     routeLine = L.polyline(routePoints, {
