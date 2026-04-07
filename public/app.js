@@ -17,6 +17,26 @@ const COLD_START_RETRY_MS = 15000;
 const SNAPSHOT_STORAGE_KEY = "dcl-tracker-snapshot";
 const SHIP_MARKER_SIZE = [48, 34];
 const PARK_MARKER_SIZE = [38, 46];
+const DISNEY_SHIP_FLEET_ORDER = new Map([
+  ["308516000", 1],
+  ["308457000", 2],
+  ["311042900", 3],
+  ["311058700", 4],
+  ["311001098", 5],
+  ["311001221", 6],
+  ["311001540", 7],
+  ["311000934", 8]
+]);
+const DISNEY_SHIP_OFFICIAL_URLS = new Map([
+  ["308516000", "https://disneycruise.disney.go.com/ships/magic/"],
+  ["308457000", "https://disneycruise.disney.go.com/ships/wonder/"],
+  ["311042900", "https://disneycruise.disney.go.com/ships/dream/"],
+  ["311058700", "https://disneycruise.disney.go.com/ships/fantasy/"],
+  ["311001098", "https://disneycruise.disney.go.com/ships/wish/"],
+  ["311001221", "https://disneycruise.disney.go.com/ships/treasure/"],
+  ["311001540", "https://disneycruise.disney.go.com/ships/destiny/"],
+  ["311000934", "https://disneycruise.disney.go.com/ships/adventure/"]
+]);
 const REGION_BOUNDS = {
   bahamas: [
     [22, -80.5],
@@ -679,6 +699,25 @@ function buildSeaRoute(ship, destinationCoordinate) {
   return [start, ...routeWaypoints, destinationCoordinate];
 }
 
+function getShipFleetOrder(ship) {
+  return ship.fleetOrder ?? DISNEY_SHIP_FLEET_ORDER.get(ship.mmsi) ?? Number.MAX_SAFE_INTEGER;
+}
+
+function sortShipsByFleetAge(ships) {
+  return [...ships].sort((a, b) =>
+    getShipFleetOrder(a) - getShipFleetOrder(b)
+    || a.name.localeCompare(b.name)
+  );
+}
+
+function shipNameMarkup(ship) {
+  const shipName = escapeHtml(ship.name);
+  const officialShipUrl = ship.officialShipUrl || DISNEY_SHIP_OFFICIAL_URLS.get(ship.mmsi);
+  return officialShipUrl
+    ? `<a class="ship-name-link" href="${escapeHtml(officialShipUrl)}" target="_blank" rel="noreferrer">${shipName}</a>`
+    : shipName;
+}
+
 function renderFleet(ships) {
   const shipsWithPosition = ships.filter((ship) => ship.latitude !== null && ship.longitude !== null).length;
   fleetSummary.textContent = `${shipsWithPosition} of ${ships.length} ships currently plotted`;
@@ -688,7 +727,7 @@ function renderFleet(ships) {
     return;
   }
 
-  shipList.innerHTML = ships
+  shipList.innerHTML = sortShipsByFleetAge(ships)
     .map((ship) => {
       const hasPosition = ship.latitude !== null && ship.longitude !== null;
       const cardClasses = ["ship-card", hasPosition ? "has-position" : "no-position"];
@@ -706,7 +745,7 @@ function renderFleet(ships) {
         >
           <div class="ship-card-top">
             <div>
-              <h3>${ship.name}</h3>
+              <h3>${shipNameMarkup(ship)}</h3>
               <p class="ship-subline">${ship.className} • ${ship.homeRegion}</p>
             </div>
           </div>
@@ -740,6 +779,10 @@ function renderFleet(ships) {
     .join("");
 }
 
+function isInteractiveElement(element) {
+  return Boolean(element.closest("a, button, input, select, textarea"));
+}
+
 function focusShipOnMap(mmsi) {
   const marker = markers.get(mmsi);
   const ship = currentSnapshot?.ships?.find((item) => item.mmsi === mmsi);
@@ -766,6 +809,10 @@ function focusShipOnMap(mmsi) {
 }
 
 shipList.addEventListener("click", (event) => {
+  if (isInteractiveElement(event.target)) {
+    return;
+  }
+
   const card = event.target.closest(".ship-card");
   if (!card) {
     return;
@@ -775,6 +822,10 @@ shipList.addEventListener("click", (event) => {
 });
 
 shipList.addEventListener("keydown", (event) => {
+  if (isInteractiveElement(event.target)) {
+    return;
+  }
+
   if (event.key !== "Enter" && event.key !== " ") {
     return;
   }
@@ -791,7 +842,7 @@ shipList.addEventListener("keydown", (event) => {
 function popupMarkup(ship) {
   return `
     <div>
-      <strong>${ship.name}</strong>
+      <strong>${shipNameMarkup(ship)}</strong>
       <p class="popup-copy">Next stop: ${destinationMarkup(ship.destination)}</p>
       <p class="popup-copy">Position: ${formatCoordinate(ship.latitude, ship.longitude)}</p>
       <p class="popup-copy">Updated: ${formatTime(ship.lastSeen)}</p>

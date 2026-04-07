@@ -376,6 +376,17 @@ body.has-open-modal {
   margin: 0;
 }
 
+.ship-name-link {
+  color: var(--accent);
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.16em;
+}
+
+.ship-name-link:hover,
+.ship-name-link:focus-visible {
+  color: #0b2b55;
+}
+
 .ship-subline {
   margin-top: 0.25rem;
 }
