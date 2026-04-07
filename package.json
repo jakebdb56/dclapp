@@ -2,7 +2,7 @@
   "name": "disney-cruise-tracker",
   "version": "0.1.0",
   "private": true,
-  "description": "Mobile-friendly Disney Cruise Line tracker powered by VesselFinder",
+  "description": "Mobile-friendly Disney Cruise Line tracker powered by scraped vessel pages",
   "type": "module",
   "dependencies": {
     "@upstash/redis": "^1.35.3"

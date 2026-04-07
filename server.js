@@ -34,7 +34,6 @@ async function serveStatic(req, res) {
 
 async function handleShipsApi(res) {
   const result = await refreshAndCacheSnapshot({
-    apiKey: process.env.VESSELFINDER_API_KEY,
     attempts: 1,
     timeoutMs: 8000
   });
@@ -48,7 +47,6 @@ async function handleShipsApi(res) {
 
 async function handleRefreshApi(res) {
   const result = await refreshAndCacheSnapshot({
-    apiKey: process.env.VESSELFINDER_API_KEY,
     attempts: 2,
     timeoutMs: 8000
   });

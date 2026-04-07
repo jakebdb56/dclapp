@@ -28,7 +28,6 @@ export default async function handler(req, res) {
   }
 
   const result = await refreshAndCacheSnapshot({
-    apiKey: process.env.VESSELFINDER_API_KEY,
     attempts: 2,
     timeoutMs: 8000
   });

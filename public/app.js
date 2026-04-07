@@ -336,7 +336,7 @@ function mergeSnapshots(previousSnapshot, nextSnapshot) {
       ...nextSnapshot,
       connection: {
         ...nextSnapshot.connection,
-        status: "searching_for_vesselfinder_updates"
+        status: "searching_for_scraped_updates"
       }
     };
   }
@@ -353,7 +353,7 @@ function mergeSnapshots(previousSnapshot, nextSnapshot) {
         ? nextSnapshot.connection.status
         : hasCachedUsefulData
           ? "cached"
-          : "searching_for_vesselfinder_updates",
+          : "searching_for_scraped_updates",
       lastEventAt: nextSnapshot.connection.lastEventAt || previousSnapshot.connection.lastEventAt,
       lastError: hasFreshEvent ? nextSnapshot.connection.lastError : previousSnapshot.connection.lastError
     },
