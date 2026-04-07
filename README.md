@@ -47,18 +47,13 @@ The frontend is static and the data comes from the serverless route at `/api/shi
 
 ## Scheduled refresh
 
-This repo includes a GitHub Actions workflow at `.github/workflows/warm-cache.yml` that warms the Redis cache every hour. Each warm-up calls `/api/refresh-ships`, which scrapes the configured VesselFinder detail pages.
+This repo includes a GitHub Actions workflow at `.github/workflows/warm-cache.yml` that warms the Redis cache every hour. Each warm-up runs the scraper from GitHub Actions and writes the normalized snapshot directly to Redis.
 
 To enable it:
 
 1. In GitHub, open `Settings` -> `Secrets and variables` -> `Actions`.
-2. Add `DCL_REFRESH_URL` with your refresh endpoint URL:
-
-```text
-https://www.disneycruise.tech/api/refresh-ships
-```
-
-3. If you set `CRON_SECRET` in Vercel, add the same value in GitHub as `DCL_CRON_SECRET`.
+2. Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` with the same Redis credentials used by Vercel. If your integration uses Vercel KV names instead, add `KV_REST_API_URL` and `KV_REST_API_TOKEN`.
+3. Optionally add `VESSELFINDER_DETAILS_USER_AGENT` if you need to override the default scraper user agent.
 4. Enable GitHub Actions for the repo if they are disabled.
 
 You can also run the workflow manually with `Run workflow` from the Actions tab.
@@ -67,5 +62,5 @@ You can also run the workflow manually with `Run workflow` from the Actions tab.
 
 - VesselFinder detail pages are scraped from the serverless API route so the browser only receives normalized ship data.
 - On Vercel, `/api/ships` serves the last good cached snapshot from Redis and never waits on a live scrape.
-- The optional `/api/refresh-ships` endpoint can be used for manual warming or scheduled refreshes. If you set `CRON_SECRET`, send it as a bearer token or `?secret=...`.
-- Vercel Hobby cron jobs only run once per day according to Vercel's docs, so frequent warming requires either a higher Vercel plan or an external scheduler calling `/api/refresh-ships`.
+- The optional `/api/refresh-ships` endpoint can be used for manual warming from Vercel. If you set `CRON_SECRET`, send it as a bearer token or `?secret=...`.
+- Vercel may time out while scraping VesselFinder directly, so scheduled warming runs in GitHub Actions and writes to Redis directly.
