@@ -15,6 +15,7 @@ const aboutCloseButtons = Array.from(document.querySelectorAll("[data-about-clos
 const POLL_INTERVAL_MS = 60000;
 const COLD_START_RETRY_MS = 15000;
 const SNAPSHOT_STORAGE_KEY = "dcl-tracker-snapshot";
+const SHIP_MARKER_SIZE = [48, 34];
 const REGION_BOUNDS = {
   bahamas: [
     [22, -80.5],
@@ -685,6 +686,33 @@ function routePopupMarkup(ship) {
   `;
 }
 
+function shipMarkerIcon() {
+  return L.divIcon({
+    className: "ship-marker-shell",
+    html: `
+      <div class="ship-marker" aria-hidden="true">
+        <svg viewBox="0 0 64 44">
+          <path class="ship-marker-shadow" d="M11 33.6c8.4 5.2 34.5 5.2 42.9 0 2.1 2.8 2 5.3-.3 7.5H14.1c-2.3-2.2-2.5-4.7-.1-7.5z" />
+          <path class="ship-marker-hull" d="M4.9 25.7h45.6c4.7 0 8.5-1.9 11.3-5.7-.6 6-3.5 11-8.8 15.1H15.8C10.7 33.6 7.1 30.5 4.9 25.7z" />
+          <path class="ship-marker-keel" d="M15.8 35.1H53c-4.2 2.8-10 4.1-17.4 4.1h-3.2c-7.1 0-12.6-1.4-16.6-4.1z" />
+          <path class="ship-marker-decks" d="M13.8 23.7h32.4l-3.1-12.4H19.6l-2.1 5.2h-4.2z" />
+          <path class="ship-marker-bridge" d="M22.8 9.7h17.6l2.7 6.8H18.7z" />
+          <path class="ship-marker-funnel" d="M24.8 4.6h5.5l1 6.7h-7.6z" />
+          <path class="ship-marker-funnel" d="M36 4.6h5.5l1 6.7h-7.6z" />
+          <path class="ship-marker-window" d="M15.2 27.9h4.8" />
+          <path class="ship-marker-window" d="M23 27.9h4.8" />
+          <path class="ship-marker-window" d="M30.8 27.9h4.8" />
+          <path class="ship-marker-window" d="M38.6 27.9h4.8" />
+          <path class="ship-marker-window" d="M46.4 27.9h4.2" />
+        </svg>
+      </div>
+    `,
+    iconSize: SHIP_MARKER_SIZE,
+    iconAnchor: [SHIP_MARKER_SIZE[0] / 2, 26],
+    popupAnchor: [0, -22]
+  });
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -809,12 +837,7 @@ function syncMap(ships) {
     let marker = markers.get(ship.mmsi);
     if (!marker) {
       marker = L.marker([ship.latitude, ship.longitude], {
-        icon: L.divIcon({
-          className: "",
-          html: `<div class="marker-dot"></div>`,
-          iconSize: [12, 12],
-          iconAnchor: [6, 6]
-        })
+        icon: shipMarkerIcon()
       }).addTo(map);
 
       markers.set(ship.mmsi, marker);
