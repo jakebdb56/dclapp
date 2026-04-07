@@ -754,20 +754,25 @@ function formatSailingDateRange(departureDate, returnDate) {
 
 function activeSailingMarkup(ship) {
   const sailing = ship.activeSailing;
-  if (!sailing?.url || !sailing?.code) {
+  if (!sailing?.code) {
     return "";
   }
 
-  return `<p class="popup-copy">Sailing: <a href="${escapeHtml(sailing.url)}" target="_blank" rel="noreferrer">${escapeHtml(sailing.code)}</a></p>`;
+  const codeMarkup = sailing.url
+    ? `<a href="${escapeHtml(sailing.url)}" target="_blank" rel="noreferrer">${escapeHtml(sailing.code)}</a>`
+    : escapeHtml(sailing.code);
+  return `<p class="popup-copy">Sailing: ${codeMarkup}</p>`;
 }
 
 function activeSailingCodeMarkup(ship) {
   const sailing = ship.activeSailing;
-  if (!sailing?.code || !sailing?.url) {
+  if (!sailing?.code) {
     return "Not reported";
   }
 
-  return `<a href="${escapeHtml(sailing.url)}" target="_blank" rel="noreferrer">${escapeHtml(sailing.code)}</a>`;
+  return sailing.url
+    ? `<a href="${escapeHtml(sailing.url)}" target="_blank" rel="noreferrer">${escapeHtml(sailing.code)}</a>`
+    : escapeHtml(sailing.code);
 }
 
 function getSeaRouteWaypoints(destination) {
@@ -980,13 +985,16 @@ function popupMarkup(ship) {
   const vesselFinderLink = ship.detailsUrl
     ? `<p class="popup-copy">Source: <a href="${escapeHtml(ship.detailsUrl)}" target="_blank" rel="noreferrer">VesselFinder</a></p>`
     : "";
-  const sailingLink = activeSailingMarkup(ship);
+  const sailingCode = ship.activeSailing?.code ? escapeHtml(ship.activeSailing.code) : "Not reported";
+  const sailingLine = ship.activeSailing?.url
+    ? `<a href="${escapeHtml(ship.activeSailing.url)}" target="_blank" rel="noreferrer">${sailingCode}</a>`
+    : sailingCode;
 
   return `
     <div>
       <strong>${shipNameMarkup(ship)}</strong>
       <p class="popup-copy">Next stop: ${destinationMarkup(ship.destination)}</p>
-      ${sailingLink}
+      <p class="popup-copy">Sailing: ${sailingLine}</p>
       <p class="popup-copy">Position: ${formatCoordinate(ship.latitude, ship.longitude)}</p>
       <p class="popup-copy">Updated: ${formatTime(ship.lastSeen)}</p>
       ${vesselFinderLink}
@@ -1279,12 +1287,16 @@ function syncMap(ships) {
       marker.setLatLng([markerCoordinate.latitude, markerCoordinate.longitude]);
       if (marker.getPopup()) {
         marker.setPopupContent(popupMarkup(ship));
+        marker.getPopup().update();
       } else {
         marker.bindPopup(popupMarkup(ship));
       }
     }
 
     marker.setOpacity(markerCoordinate.isEstimated ? 0.72 : 1);
+    if (marker.isPopupOpen()) {
+      marker.openPopup();
+    }
     if (markerCoordinate.isEstimated) {
       removeShipRoute(id);
     } else {

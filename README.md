@@ -24,7 +24,7 @@ Mobile-friendly web app for tracking Disney Cruise Line ships with AIS position 
 
 ## Local setup
 
-1. Install Node.js 22 or newer.
+1. Install Node.js 24 or newer. The local setup has been updated and verified with Node.js 24.14.1.
 2. Copy `.env.example` to `.env`.
 3. Optionally set `VESSELFINDER_DETAILS_USER_AGENT` in `.env`.
 4. Run with Vercel's local dev server:
