@@ -10,7 +10,8 @@
     "@vercel/speed-insights": "^2.0.0"
   },
   "scripts": {
-    "start": "node --env-file=.env server.js"
+    "start": "node --env-file=.env server.js",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=22.0.0"

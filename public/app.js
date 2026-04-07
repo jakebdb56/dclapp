@@ -17,6 +17,7 @@ const COLD_START_RETRY_MS = 15000;
 const SNAPSHOT_STORAGE_KEY = "dcl-tracker-snapshot";
 const SHIP_MARKER_SIZE = [48, 34];
 const PARK_MARKER_SIZE = [38, 46];
+const WATER_WAVE_MARKER_SIZE = [44, 26];
 const DISNEY_SHIP_FLEET_ORDER = new Map([
   ["308516000", 1],
   ["308457000", 2],
@@ -36,6 +37,16 @@ const DISNEY_SHIP_OFFICIAL_URLS = new Map([
   ["311001221", "https://disneycruise.disney.go.com/ships/treasure/"],
   ["311001540", "https://disneycruise.disney.go.com/ships/destiny/"],
   ["311000934", "https://disneycruise.disney.go.com/ships/adventure/"]
+]);
+const DISNEY_SHIP_FALLBACK_PORTS = new Map([
+  ["308516000", "SAN DIEGO"],
+  ["308457000", "SAN DIEGO"],
+  ["311042900", "FORT LAUDERDALE"],
+  ["311058700", "PORT CANAVERAL"],
+  ["311001098", "PORT CANAVERAL"],
+  ["311001221", "PORT CANAVERAL"],
+  ["311001540", "FORT LAUDERDALE"],
+  ["311000934", "SINGAPORE"]
 ]);
 const REGION_BOUNDS = {
   bahamas: [
@@ -412,11 +423,35 @@ const SEA_ROUTE_WAYPOINTS = new Map(
     ]
   ].flatMap(([aliases, waypoints]) => aliases.map((alias) => [alias, waypoints]))
 );
+const WATER_WAVE_POINTS = [
+  [26.1, -78.7],
+  [24.6, -76.2],
+  [21.7, -82.6],
+  [18.7, -67.2],
+  [14.7, -73.5],
+  [24.2, -88.6],
+  [33.8, -69.3],
+  [42.4, -55.8],
+  [49.6, -131.9],
+  [56.2, -138.6],
+  [32.2, -121.4],
+  [21.2, -157.8],
+  [34.2, -10.2],
+  [41.4, 4.9],
+  [37.2, 18.3],
+  [-22.4, 161.8],
+  [-34.8, 153.2],
+  [1.4, 105.1]
+];
 
 const map = L.map("map", {
   zoomControl: true,
   worldCopyJump: true
 }).setView([25.7617, -80.1918], 3);
+
+map.createPane("waterDecorPane");
+map.getPane("waterDecorPane").style.zIndex = 350;
+map.getPane("waterDecorPane").style.pointerEvents = "none";
 
 L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
   maxZoom: 20,
@@ -425,6 +460,7 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>'
 }).addTo(map);
 
+const waterWaveLayer = L.layerGroup().addTo(map);
 const markers = new Map();
 const routeLines = new Map();
 const portMarkers = new Map();
@@ -638,6 +674,102 @@ function destinationMarkup(destination) {
     : label;
 }
 
+function getShipMarkerCoordinate(ship) {
+  if (hasCoordinatePair(ship)) {
+    return {
+      latitude: ship.latitude,
+      longitude: ship.longitude,
+      isEstimated: false
+    };
+  }
+
+  const lastPortCoordinate = getDestinationCoordinate(ship.lastPort);
+  if (lastPortCoordinate) {
+    return {
+      latitude: lastPortCoordinate[0],
+      longitude: lastPortCoordinate[1],
+      isEstimated: true
+    };
+  }
+
+  const destinationCoordinate = getDestinationCoordinate(ship.destination);
+  if (destinationCoordinate) {
+    return {
+      latitude: destinationCoordinate[0],
+      longitude: destinationCoordinate[1],
+      isEstimated: true
+    };
+  }
+
+  const departurePortCoordinate = getDestinationCoordinate(ship.activeSailing?.departurePort);
+  if (departurePortCoordinate) {
+    return {
+      latitude: departurePortCoordinate[0],
+      longitude: departurePortCoordinate[1],
+      isEstimated: true
+    };
+  }
+
+  const fallbackPortCoordinate = getDestinationCoordinate(DISNEY_SHIP_FALLBACK_PORTS.get(shipKey(ship)));
+  if (fallbackPortCoordinate) {
+    return {
+      latitude: fallbackPortCoordinate[0],
+      longitude: fallbackPortCoordinate[1],
+      isEstimated: true
+    };
+  }
+
+  return null;
+}
+
+function formatSailingDateRange(departureDate, returnDate) {
+  const departure = departureDate ? new Date(departureDate) : null;
+  const returning = returnDate ? new Date(returnDate) : null;
+  if (
+    !departure ||
+    !returning ||
+    Number.isNaN(departure.getTime()) ||
+    Number.isNaN(returning.getTime())
+  ) {
+    return null;
+  }
+
+  const sameYear = departure.getUTCFullYear() === returning.getUTCFullYear();
+  const sameMonth = sameYear && departure.getUTCMonth() === returning.getUTCMonth();
+  const departureLabel = departure.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: sameYear ? undefined : "numeric",
+    timeZone: "UTC"
+  });
+  const returnLabel = returning.toLocaleDateString(undefined, {
+    month: sameMonth ? undefined : "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC"
+  });
+
+  return `${departureLabel}-${returnLabel}`;
+}
+
+function activeSailingMarkup(ship) {
+  const sailing = ship.activeSailing;
+  if (!sailing?.url || !sailing?.code) {
+    return "";
+  }
+
+  return `<p class="popup-copy">Sailing: <a href="${escapeHtml(sailing.url)}" target="_blank" rel="noreferrer">${escapeHtml(sailing.code)}</a></p>`;
+}
+
+function activeSailingCodeMarkup(ship) {
+  const sailing = ship.activeSailing;
+  if (!sailing?.code || !sailing?.url) {
+    return "Not reported";
+  }
+
+  return `<a href="${escapeHtml(sailing.url)}" target="_blank" rel="noreferrer">${escapeHtml(sailing.code)}</a>`;
+}
+
 function getSeaRouteWaypoints(destination) {
   const normalized = normalizeDestination(destination);
   if (!normalized) {
@@ -767,6 +899,10 @@ function renderFleet(ships) {
               <span>ETA</span>
               <strong>${ship.eta ? formatTime(ship.eta) : "Not reported"}</strong>
             </div>
+            <div class="ship-metric">
+              <span>Sailing code</span>
+              <strong>${activeSailingCodeMarkup(ship)}</strong>
+            </div>
           </div>
 
           <p class="ship-meta">
@@ -844,11 +980,13 @@ function popupMarkup(ship) {
   const vesselFinderLink = ship.detailsUrl
     ? `<p class="popup-copy">Source: <a href="${escapeHtml(ship.detailsUrl)}" target="_blank" rel="noreferrer">VesselFinder</a></p>`
     : "";
+  const sailingLink = activeSailingMarkup(ship);
 
   return `
     <div>
       <strong>${shipNameMarkup(ship)}</strong>
       <p class="popup-copy">Next stop: ${destinationMarkup(ship.destination)}</p>
+      ${sailingLink}
       <p class="popup-copy">Position: ${formatCoordinate(ship.latitude, ship.longitude)}</p>
       <p class="popup-copy">Updated: ${formatTime(ship.lastSeen)}</p>
       ${vesselFinderLink}
@@ -889,6 +1027,34 @@ function shipMarkerIcon() {
     iconSize: SHIP_MARKER_SIZE,
     iconAnchor: [SHIP_MARKER_SIZE[0] / 2, 26],
     popupAnchor: [0, -22]
+  });
+}
+
+function waterWaveIcon(index) {
+  return L.divIcon({
+    className: "water-wave-shell",
+    html: `
+      <div class="water-wave water-wave-${index % 3}" aria-hidden="true">
+        <svg viewBox="0 0 88 52">
+          <path class="water-wave-crest water-wave-crest-back" d="M7 29c8-8 16-8 24 0s16 8 24 0 16-8 26 0" />
+          <path class="water-wave-crest" d="M13 36c7-7 14-7 21 0s14 7 21 0 14-7 20 0" />
+          <path class="water-wave-spark" d="M62 10l2.1 4.4 4.4 2.1-4.4 2.1L62 23l-2.1-4.4-4.4-2.1 4.4-2.1z" />
+        </svg>
+      </div>
+    `,
+    iconSize: WATER_WAVE_MARKER_SIZE,
+    iconAnchor: [WATER_WAVE_MARKER_SIZE[0] / 2, WATER_WAVE_MARKER_SIZE[1] / 2]
+  });
+}
+
+function renderWaterWaves() {
+  WATER_WAVE_POINTS.forEach((point, index) => {
+    L.marker(point, {
+      icon: waterWaveIcon(index),
+      interactive: false,
+      keyboard: false,
+      pane: "waterDecorPane"
+    }).addTo(waterWaveLayer);
   });
 }
 
@@ -948,8 +1114,9 @@ function parkMarkerIcon(park) {
 
 function getPlottedShipBounds(ships = currentSnapshot?.ships || []) {
   const bounds = ships
-    .filter((ship) => hasCoordinatePair(ship))
-    .map((ship) => [ship.latitude, ship.longitude]);
+    .map((ship) => getShipMarkerCoordinate(ship))
+    .filter(Boolean)
+    .map((coordinate) => [coordinate.latitude, coordinate.longitude]);
 
   return bounds.length ? bounds : null;
 }
@@ -1088,7 +1255,8 @@ function syncMap(ships) {
 
   ships.forEach((ship) => {
     const id = shipKey(ship);
-    if (!hasCoordinatePair(ship)) {
+    const markerCoordinate = getShipMarkerCoordinate(ship);
+    if (!markerCoordinate) {
       const existing = markers.get(id);
       if (existing) {
         map.removeLayer(existing);
@@ -1101,17 +1269,27 @@ function syncMap(ships) {
     liveMarkerIds.add(id);
     let marker = markers.get(id);
     if (!marker) {
-      marker = L.marker([ship.latitude, ship.longitude], {
+      marker = L.marker([markerCoordinate.latitude, markerCoordinate.longitude], {
         icon: shipMarkerIcon()
       }).addTo(map);
 
       markers.set(id, marker);
+      marker.bindPopup(popupMarkup(ship));
     } else {
-      marker.setLatLng([ship.latitude, ship.longitude]);
+      marker.setLatLng([markerCoordinate.latitude, markerCoordinate.longitude]);
+      if (marker.getPopup()) {
+        marker.setPopupContent(popupMarkup(ship));
+      } else {
+        marker.bindPopup(popupMarkup(ship));
+      }
     }
 
-    marker.bindPopup(popupMarkup(ship));
-    syncShipRoute(ship);
+    marker.setOpacity(markerCoordinate.isEstimated ? 0.72 : 1);
+    if (markerCoordinate.isEstimated) {
+      removeShipRoute(id);
+    } else {
+      syncShipRoute(ship);
+    }
   });
 
   if (selectedShipMmsi && markers.has(selectedShipMmsi)) {
@@ -1274,7 +1452,8 @@ function mergeShips(previousShip, nextShip) {
     aisFlag: nextShip.aisFlag || previousShip.aisFlag,
     lastPort: nextShip.lastPort || previousShip.lastPort,
     lastPortDeparture: nextShip.lastPortDeparture || previousShip.lastPortDeparture,
-    detailsUrl: nextShip.detailsUrl || previousShip.detailsUrl
+    detailsUrl: nextShip.detailsUrl || previousShip.detailsUrl,
+    activeSailing: nextShip.activeSailing || previousShip.activeSailing || null
   };
 }
 
@@ -1339,7 +1518,27 @@ async function loadSnapshot() {
   if (!response.ok) {
     throw new Error(`API returned ${response.status}`);
   }
-  const data = await response.json();
+
+  let data = await response.json();
+  const shouldTryLiveRefresh =
+    !hasUsefulShipData(data) &&
+    (data?.connection?.cacheStatus === "miss" ||
+      data?.connection?.status === "awaiting_cache_seed");
+
+  if (shouldTryLiveRefresh) {
+    try {
+      const refreshResponse = await fetch("/api/refresh-ships");
+      if (refreshResponse.ok) {
+        const refreshed = await refreshResponse.json();
+        if (hasUsefulShipData(refreshed)) {
+          data = refreshed;
+        }
+      }
+    } catch {
+      // Keep the cache response when manual warming is unavailable or protected.
+    }
+  }
+
   const merged = mergeSnapshots(currentSnapshot, data);
   persistSnapshot(merged);
   render(merged);
@@ -1376,3 +1575,5 @@ if (cachedSnapshot) {
   currentSnapshot = cachedSnapshot;
   render(cachedSnapshot);
 }
+
+renderWaterWaves();
