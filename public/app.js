@@ -841,12 +841,17 @@ shipList.addEventListener("keydown", (event) => {
 });
 
 function popupMarkup(ship) {
+  const vesselFinderLink = ship.detailsUrl
+    ? `<p class="popup-copy">Source: <a href="${escapeHtml(ship.detailsUrl)}" target="_blank" rel="noreferrer">VesselFinder</a></p>`
+    : "";
+
   return `
     <div>
       <strong>${shipNameMarkup(ship)}</strong>
       <p class="popup-copy">Next stop: ${destinationMarkup(ship.destination)}</p>
       <p class="popup-copy">Position: ${formatCoordinate(ship.latitude, ship.longitude)}</p>
       <p class="popup-copy">Updated: ${formatTime(ship.lastSeen)}</p>
+      ${vesselFinderLink}
     </div>
   `;
 }
