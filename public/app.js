@@ -454,6 +454,47 @@ function getDestinationCoordinate(destination) {
   return null;
 }
 
+function coordinatesMatch(point, port) {
+  return port.latitude !== null
+    && port.longitude !== null
+    && Math.abs(point[0] - port.latitude) < 0.005
+    && Math.abs(point[1] - port.longitude) < 0.005;
+}
+
+function getDestinationPort(destination) {
+  const normalized = normalizeDestination(destination);
+  const ports = currentSnapshot?.ports || [];
+  if (!normalized || !ports.length) {
+    return null;
+  }
+
+  const directMatch = ports.find((port) => normalizeDestination(port.name) === normalized);
+  if (directMatch) {
+    return directMatch;
+  }
+
+  const nameMatch = ports.find((port) => {
+    const portName = normalizeDestination(port.name);
+    return portName?.length >= 6 && (normalized.includes(portName) || portName.includes(normalized));
+  });
+  if (nameMatch) {
+    return nameMatch;
+  }
+
+  const destinationCoordinate = getDestinationCoordinate(destination);
+  return destinationCoordinate
+    ? ports.find((port) => coordinatesMatch(destinationCoordinate, port)) || null
+    : null;
+}
+
+function destinationMarkup(destination) {
+  const destinationPort = getDestinationPort(destination);
+  const label = escapeHtml(destinationPort?.name || destination || "Not reported");
+  return destinationPort?.detailUrl
+    ? `<a href="${escapeHtml(destinationPort.detailUrl)}" target="_blank" rel="noreferrer">${label}</a>`
+    : label;
+}
+
 function getSeaRouteWaypoints(destination) {
   const normalized = normalizeDestination(destination);
   if (!normalized) {
@@ -628,7 +669,7 @@ function popupMarkup(ship) {
   return `
     <div>
       <strong>${ship.name}</strong>
-      <p class="popup-copy">Next stop: ${ship.destination || "Not reported"}</p>
+      <p class="popup-copy">Next stop: ${destinationMarkup(ship.destination)}</p>
       <p class="popup-copy">Position: ${formatCoordinate(ship.latitude, ship.longitude)}</p>
       <p class="popup-copy">Updated: ${formatTime(ship.lastSeen)}</p>
     </div>
@@ -638,7 +679,7 @@ function popupMarkup(ship) {
 function routePopupMarkup(ship) {
   return `
     <div>
-      <strong>${ship.destination}</strong>
+      <strong>${destinationMarkup(ship.destination)}</strong>
       <p class="popup-copy">Next stop for ${ship.name}</p>
     </div>
   `;
