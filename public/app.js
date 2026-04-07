@@ -4,6 +4,7 @@ const feedStatus = document.querySelector("#feed-status");
 const feedUpdated = document.querySelector("#feed-updated");
 const fleetDrawer = document.querySelector("#fleet-drawer");
 const fleetToggle = document.querySelector("#fleet-toggle");
+const viewAllButton = document.querySelector("#view-all");
 const toggleButtons = Array.from(document.querySelectorAll(".toggle-button"));
 const panels = Array.from(document.querySelectorAll("[data-view]"));
 const POLL_INTERVAL_MS = 60000;
@@ -53,6 +54,10 @@ fleetToggle.addEventListener("click", () => {
   setTimeout(() => map.invalidateSize(), 180);
 });
 
+viewAllButton.addEventListener("click", () => {
+  fitAllShipsOnMap();
+});
+
 function formatTime(value) {
   if (!value) {
     return "No data yet";
@@ -85,25 +90,6 @@ function formatSpeed(speedKnots) {
   return `${speedKnots.toFixed(1)} kn`;
 }
 
-function getShipStatus(ship) {
-  if (!ship.lastSeen) {
-    return { label: "No signal", className: "status-offline" };
-  }
-
-  const lastSeen = new Date(ship.lastSeen).getTime();
-  const ageMinutes = (Date.now() - lastSeen) / 60000;
-
-  if (ageMinutes <= 30) {
-    return { label: "Live", className: "status-live" };
-  }
-
-  if (ageMinutes <= 240) {
-    return { label: "Stale", className: "status-stale" };
-  }
-
-  return { label: "Offline", className: "status-offline" };
-}
-
 function renderFleet(ships) {
   const shipsWithPosition = ships.filter((ship) => ship.latitude !== null && ship.longitude !== null).length;
   fleetSummary.textContent = `${shipsWithPosition} of ${ships.length} ships currently plotted`;
@@ -115,7 +101,6 @@ function renderFleet(ships) {
 
   shipList.innerHTML = ships
     .map((ship) => {
-      const status = getShipStatus(ship);
       const hasPosition = ship.latitude !== null && ship.longitude !== null;
       const cardClasses = ["ship-card", hasPosition ? "has-position" : "no-position"];
       if (selectedShipMmsi === ship.mmsi) {
@@ -135,7 +120,6 @@ function renderFleet(ships) {
               <h3>${ship.name}</h3>
               <p class="ship-subline">${ship.className} • ${ship.homeRegion}</p>
             </div>
-            <span class="status-badge ${status.className}">${status.label}</span>
           </div>
 
           <div class="ship-grid">
@@ -158,7 +142,7 @@ function renderFleet(ships) {
           </div>
 
           <p class="ship-meta">
-            Last seen: ${formatTime(ship.lastSeen)}${ship.sourceMessageType ? ` • ${ship.sourceMessageType}` : ""}
+            Last Report: ${formatTime(ship.lastSeen)}
           </p>
           <p class="ship-card-action">${hasPosition ? "Tap to zoom to ship" : "Waiting for a reported position"}</p>
         </article>
@@ -226,9 +210,31 @@ function popupMarkup(ship) {
   `;
 }
 
-function syncMap(ships) {
-  const bounds = [];
+function getPlottedShipBounds(ships = currentSnapshot?.ships || []) {
+  const bounds = ships
+    .filter((ship) => ship.latitude !== null && ship.longitude !== null)
+    .map((ship) => [ship.latitude, ship.longitude]);
 
+  return bounds.length ? bounds : null;
+}
+
+function fitAllShipsOnMap(ships) {
+  const bounds = getPlottedShipBounds(ships);
+  if (!bounds) {
+    return false;
+  }
+
+  selectedShipMmsi = null;
+  map.closePopup();
+  setActiveView("map");
+  map.fitBounds(bounds, { padding: [36, 36], maxZoom: 5 });
+  if (currentSnapshot) {
+    renderFleet(currentSnapshot.ships);
+  }
+  return true;
+}
+
+function syncMap(ships) {
   ships.forEach((ship) => {
     if (ship.latitude === null || ship.longitude === null) {
       const existing = markers.get(ship.mmsi);
@@ -238,8 +244,6 @@ function syncMap(ships) {
       }
       return;
     }
-
-    bounds.push([ship.latitude, ship.longitude]);
 
     let marker = markers.get(ship.mmsi);
     if (!marker) {
@@ -264,7 +268,8 @@ function syncMap(ships) {
     markers.get(selectedShipMmsi).openPopup();
   }
 
-  if (bounds.length) {
+  const bounds = getPlottedShipBounds(ships);
+  if (bounds) {
     if (!hasFitMap) {
       map.fitBounds(bounds, { padding: [36, 36], maxZoom: 5 });
       hasFitMap = true;
