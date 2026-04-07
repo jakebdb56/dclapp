@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: "0 * * * *"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   warm-cache:
     runs-on: ubuntu-latest
@@ -18,10 +21,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --omit=dev
 
       - name: Warm cached ship snapshot
         env:
