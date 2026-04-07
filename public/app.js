@@ -691,9 +691,9 @@ function syncPorts(ports = []) {
     if (!marker) {
       marker = L.circleMarker([port.latitude, port.longitude], {
         radius: 4,
-        color: "#0f6c74",
+        color: "#123d73",
         weight: 1.5,
-        fillColor: "#ffffff",
+        fillColor: "#d6a84f",
         fillOpacity: 0.92
       }).addTo(map);
       dclPortMarkers.set(port.id, marker);
@@ -788,7 +788,7 @@ function syncShipRoute(ship) {
   let routeLine = routeLines.get(ship.mmsi);
   if (!routeLine) {
     routeLine = L.polyline(routePoints, {
-      color: "#0f6c74",
+      color: "#123d73",
       weight: 2,
       opacity: 0.78,
       dashArray: "4 8",
@@ -803,7 +803,7 @@ function syncShipRoute(ship) {
   if (!portMarker) {
     portMarker = L.circleMarker(destinationCoordinate, {
       radius: 5,
-      color: "#0f6c74",
+      color: "#123d73",
       weight: 2,
       fillColor: "#ffffff",
       fillOpacity: 0.95

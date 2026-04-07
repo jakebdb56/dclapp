@@ -1,16 +1,17 @@
 :root {
-  --bg: #f4efe7;
-  --panel: rgba(255, 250, 242, 0.92);
-  --panel-strong: #fff8ef;
-  --text: #1d2b38;
-  --muted: #596b79;
-  --accent: #0f6c74;
-  --accent-2: #f0a23b;
-  --line: rgba(29, 43, 56, 0.12);
-  --good: #1f8f58;
-  --warn: #ce7d1a;
-  --bad: #b44343;
-  --shadow: 0 20px 50px rgba(18, 38, 54, 0.12);
+  --bg: #071f3f;
+  --panel: rgba(255, 255, 255, 0.96);
+  --panel-strong: #ffffff;
+  --text: #10233f;
+  --muted: #5a6e84;
+  --accent: #123d73;
+  --accent-2: #d6a84f;
+  --accent-3: #0b2b55;
+  --line: rgba(16, 35, 63, 0.14);
+  --good: #1f7d56;
+  --warn: #a66910;
+  --bad: #a53434;
+  --shadow: 0 18px 44px rgba(3, 17, 38, 0.26);
   --map-toolbar-height: 4rem;
 }
 
@@ -24,9 +25,8 @@ body {
   font-family: "Avenir Next", "Segoe UI", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at top left, rgba(15, 108, 116, 0.18), transparent 32%),
-    radial-gradient(circle at top right, rgba(240, 162, 59, 0.18), transparent 28%),
-    linear-gradient(180deg, #f6f1ea 0%, #efe5d6 100%);
+    linear-gradient(180deg, #071f3f 0%, #0a2b55 48%, #082244 100%);
+  background-color: var(--bg);
 }
 
 .app-shell {
@@ -40,13 +40,12 @@ body {
   gap: 0.75rem;
   align-items: center;
   justify-content: space-between;
-  padding: 0.7rem 0.85rem;
-  border: 1px solid rgba(29, 43, 56, 0.1);
-  border-radius: 18px;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(255, 248, 239, 0.88)),
-    linear-gradient(120deg, rgba(15, 108, 116, 0.08), rgba(240, 162, 59, 0.08));
-  box-shadow: 0 10px 26px rgba(18, 38, 54, 0.08);
+    linear-gradient(180deg, rgba(18, 61, 115, 0.96), rgba(8, 34, 68, 0.96));
+  box-shadow: 0 14px 34px rgba(3, 17, 38, 0.24);
 }
 
 .eyebrow {
@@ -54,7 +53,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.16em;
   font-size: 0.62rem;
-  color: var(--accent);
+  color: var(--accent-2);
   font-weight: 700;
 }
 
@@ -68,6 +67,7 @@ body {
 .hero h1 {
   font-size: clamp(1.2rem, 3vw, 1.9rem);
   max-width: none;
+  color: white;
 }
 
 .hero-copy,
@@ -90,9 +90,9 @@ body {
   gap: 0.45rem;
   justify-content: flex-end;
   padding: 0.5rem;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 .status-row {
@@ -104,7 +104,11 @@ body {
 }
 
 .status-row span {
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.status-row strong {
+  color: white;
 }
 
 .view-toggle {
@@ -119,7 +123,7 @@ body {
   background: rgba(255, 255, 255, 0.72);
   color: var(--text);
   padding: 0.9rem 1rem;
-  border-radius: 999px;
+  border-radius: 8px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -138,7 +142,7 @@ body {
   display: block;
   padding: 1rem;
   border: 1px solid var(--line);
-  border-radius: 28px;
+  border-radius: 8px;
   background: var(--panel);
   box-shadow: var(--shadow);
 }
@@ -187,13 +191,21 @@ body {
 
 .map-action-button {
   flex: 0 0 auto;
-  border: 1px solid rgba(15, 108, 116, 0.24);
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(18, 61, 115, 0.24);
+  background: rgba(255, 255, 255, 0.92);
   color: var(--accent);
   padding: 0.7rem 0.95rem;
-  border-radius: 999px;
+  border-radius: 8px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.map-action-button:hover,
+.map-action-button:focus-visible {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  outline: none;
 }
 
 .ship-list {
@@ -203,7 +215,7 @@ body {
 
 .ship-card {
   padding: 0.85rem;
-  border-radius: 18px;
+  border-radius: 8px;
   background: var(--panel-strong);
   border: 1px solid rgba(29, 43, 56, 0.09);
   cursor: pointer;
@@ -215,15 +227,15 @@ body {
 
 .ship-card:hover,
 .ship-card:focus-visible {
-  border-color: rgba(15, 108, 116, 0.34);
-  box-shadow: 0 16px 34px rgba(18, 38, 54, 0.1);
+  border-color: rgba(18, 61, 115, 0.34);
+  box-shadow: 0 16px 34px rgba(3, 17, 38, 0.14);
   outline: none;
   transform: translateY(-1px);
 }
 
 .ship-card.is-selected {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(15, 108, 116, 0.16);
+  box-shadow: 0 0 0 3px rgba(18, 61, 115, 0.16);
 }
 
 .ship-card.no-position {
@@ -254,8 +266,8 @@ body {
 
 .ship-metric {
   padding: 0.65rem;
-  border-radius: 14px;
-  background: rgba(15, 108, 116, 0.06);
+  border-radius: 8px;
+  background: rgba(18, 61, 115, 0.06);
 }
 
 .ship-metric span {
@@ -291,9 +303,9 @@ body {
 #map {
   width: 100%;
   min-height: calc(100vh - 148px);
-  border-radius: 22px;
+  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(29, 43, 56, 0.1);
+  border: 1px solid rgba(16, 35, 63, 0.16);
 }
 
 .panel-map {
@@ -311,10 +323,10 @@ body {
   max-height: calc(100% - var(--map-toolbar-height) - 2.25rem);
   overflow: auto;
   padding: 0.95rem;
-  border: 1px solid rgba(29, 43, 56, 0.14);
-  border-radius: 24px;
-  background: rgba(255, 250, 242, 0.94);
-  box-shadow: 0 22px 60px rgba(18, 38, 54, 0.18);
+  border: 1px solid rgba(16, 35, 63, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 22px 60px rgba(3, 17, 38, 0.22);
   backdrop-filter: blur(16px);
   transform: translateX(0);
   transition:
@@ -331,18 +343,23 @@ body {
 }
 
 .drawer-toggle {
-  border: 1px solid rgba(15, 108, 116, 0.2);
-  background: var(--accent);
-  color: white;
+  border: 1px solid #b8882f;
+  background: var(--accent-2);
+  color: #10233f;
   padding: 0.7rem 0.95rem;
-  border-radius: 999px;
+  border-radius: 8px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(15, 108, 116, 0.2);
+  box-shadow: 0 10px 24px rgba(3, 17, 38, 0.22);
 }
 
 .leaflet-popup-content-wrapper {
-  border-radius: 16px;
+  border-radius: 8px;
+}
+
+.leaflet-popup-content a {
+  color: var(--accent);
+  font-weight: 800;
 }
 
 .marker-dot {
@@ -351,14 +368,14 @@ body {
   border-radius: 50%;
   background: var(--accent-2);
   border: 2px solid white;
-  box-shadow: 0 0 0 4px rgba(15, 108, 116, 0.18);
+  box-shadow: 0 0 0 4px rgba(18, 61, 115, 0.24);
 }
 
 .empty-state {
   padding: 1.1rem;
   text-align: center;
   border: 1px dashed var(--line);
-  border-radius: 18px;
+  border-radius: 8px;
 }
 
 @media (min-width: 840px) {
@@ -424,6 +441,6 @@ body {
     left: 0.75rem;
     width: calc(100% - 1.5rem);
     max-height: calc(100% - var(--map-toolbar-height) - 2.25rem);
-    border-radius: 20px;
+    border-radius: 8px;
   }
 }
