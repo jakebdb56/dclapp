@@ -23,7 +23,7 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm install --omit=dev
+        run: npm install --omit=dev --no-package-lock
 
       - name: Warm cached ship snapshot
         env:
@@ -34,12 +34,12 @@ jobs:
           VESSELFINDER_DETAILS_USER_AGENT: ${{ secrets.VESSELFINDER_DETAILS_USER_AGENT }}
         run: |
           if [ -z "$UPSTASH_REDIS_REST_URL$KV_REST_API_URL" ]; then
-            echo "Missing Upstash Redis REST URL secret"
+            echo "::error::Missing Redis REST URL secret. Add UPSTASH_REDIS_REST_URL or KV_REST_API_URL in GitHub Actions secrets."
             exit 1
           fi
 
           if [ -z "$UPSTASH_REDIS_REST_TOKEN$KV_REST_API_TOKEN" ]; then
-            echo "Missing Upstash Redis REST token secret"
+            echo "::error::Missing Redis REST token secret. Add UPSTASH_REDIS_REST_TOKEN or KV_REST_API_TOKEN in GitHub Actions secrets."
             exit 1
           fi
 
@@ -51,17 +51,26 @@ jobs:
               timeoutMs: 9000
             });
 
-            console.log(JSON.stringify({
+            const summary = {
               status: result.snapshot.connection.status,
               lastError: result.snapshot.connection.lastError,
               shipsWithPositions: result.snapshot.ships.filter((ship) => ship.latitude !== null && ship.longitude !== null).length,
               shipsWithDestinations: result.snapshot.ships.filter((ship) => ship.destination).length,
               writeAttempted: result.cacheDebug.writeAttempted,
               writeSucceeded: result.cacheDebug.writeSucceeded,
-              cacheEnvFamily: result.cacheDebug.envFamily
-            }, null, 2));
+              cacheEnvFamily: result.cacheDebug.envFamily,
+              cacheLastError: result.cacheDebug.lastError
+            };
+
+            console.log(JSON.stringify(summary, null, 2));
 
             if (!result.cacheDebug.writeSucceeded) {
+              if (!result.cacheDebug.writeAttempted) {
+                console.error(`::error::Cache write was not attempted. Scrape status: ${summary.status}. Scrape error: ${summary.lastError || "none"}. Ships with positions: ${summary.shipsWithPositions}. Ships with destinations: ${summary.shipsWithDestinations}.`);
+              } else {
+                console.error(`::error::Cache write failed. Cache env: ${summary.cacheEnvFamily}. Cache error: ${summary.cacheLastError || "none"}.`);
+              }
+
               process.exitCode = 1;
             }
           '
