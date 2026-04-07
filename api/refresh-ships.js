@@ -1,7 +1,7 @@
 import { refreshAndCacheSnapshot } from "../lib/snapshot-service.js";
 
 export const config = {
-  maxDuration: 20
+  maxDuration: 60
 };
 
 function isAuthorized(req) {
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
 
   const result = await refreshAndCacheSnapshot({
     attempts: 2,
-    timeoutMs: 8000
+    timeoutMs: 25000
   });
 
   const payload = {
